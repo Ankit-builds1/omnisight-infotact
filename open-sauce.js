@@ -7,10 +7,11 @@ const { chromium } = require('playwright');
     channel: 'chrome' 
   });
   
-   const title = await page.title();
-  console.log(`Page title is: ${OmniSight}`);
-  
   const page = await browser.newPage();
+  const title = await page.title();
+  
+  console.log(`Page title is: ${title}`);
+  
   await page.goto('https://saucedemo.com');
   
   //if want to close browser automatically , just un-comment the two lines below
