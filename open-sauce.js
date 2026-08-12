@@ -1,4 +1,6 @@
 const { chromium } = require('playwright');
+const fs = require('fs');
+const path = require('path');
 
 (async () => {
 
@@ -7,7 +9,16 @@ const { chromium } = require('playwright');
     channel: 'chrome'
   });
 
-  const page = await browser.newPage();
+  // make sure screenshots always land somewhere consistent, create the folder if its not there yet____________note: sid
+  const screenshotsDir = path.join(__dirname, 'screenshots');
+  if (!fs.existsSync(screenshotsDir)) {
+    fs.mkdirSync(screenshotsDir);
+  }
+
+  // standard desktop size so screenshots look consistent, not whatever random size the window opens at
+  const page = await browser.newPage({
+    viewport: { width: 1920, height: 1080 }
+  });
 
   await page.goto('https://saucedemo.com');
 
@@ -24,6 +35,11 @@ const { chromium } = require('playwright');
   await page.waitForSelector('.inventory_list');
   console.log('logged in, products page loaded');
 
+  // .inventory_list shows up before the product images actually finish loading, so wait for the network to settle first or the screenshot catches them half loaded____note: sid
+  await page.waitForLoadState('networkidle');
+
+  await page.screenshot({ path: path.join(screenshotsDir, 'product-page.png') });
+
   // just grab the first product and add it to the cart
   await page.click('.inventory_item .btn_inventory');
 
@@ -37,12 +53,14 @@ const { chromium } = require('playwright');
   await page.waitForSelector('.cart_list');
   console.log('on cart page');
 
+  await page.screenshot({ path: path.join(screenshotsDir, 'cart-page.png') });
+
   await page.click('#checkout');
 
-  // fill checkout info step one, dummy data is fine for saucedemo
+  // fill checkout info step one, (dummy data)
   await page.waitForSelector('#first-name');
-  await page.type('#first-name', 'John', { delay: 60 });
-  await page.type('#last-name', 'Doe', { delay: 60 });
+  await page.type('#first-name', 'Peter', { delay: 60 });
+  await page.type('#last-name', 'Parker', { delay: 60 });
   await page.type('#postal-code', '12345', { delay: 60 });
   await page.click('#continue');
 
@@ -55,6 +73,8 @@ const { chromium } = require('playwright');
   await page.waitForSelector('.complete-header');
   const confirmationMsg = await page.textContent('.complete-header');
   console.log(`confirmation message: ${confirmationMsg}`);
+
+  await page.screenshot({ path: path.join(screenshotsDir, 'confirmation-page.png') });
 
   //if want to close browser automatically , just un-comment the two lines below___________note: sid
   //await page.waitForTimeout(3000);
