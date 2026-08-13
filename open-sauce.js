@@ -76,6 +76,45 @@ const path = require('path');
 
   await page.screenshot({ path: path.join(screenshotsDir, 'confirmation-page.png') });
 
+  // now do it all again but at mobile size, to grab the same key screenshots on a phone-sized viewport
+  console.log('switching to mobile viewport, redoing the flow for mobile screenshots');
+  await page.setViewportSize({ width: 375, height: 812 }); // roughly an iphone x/11 size
+
+  await page.goto('https://saucedemo.com');
+
+  await page.type('#user-name', 'standard_user', { delay: 60 });
+  await page.type('#password', 'secret_sauce', { delay: 60 });
+  await page.click('#login-button');
+
+  await page.waitForSelector('.inventory_list');
+  await page.waitForLoadState('networkidle');
+  console.log('mobile: products page loaded');
+  await page.screenshot({ path: path.join(screenshotsDir, 'mobile-product.png') });
+
+  await page.click('.inventory_item .btn_inventory');
+
+  await page.waitForTimeout(500);
+  await page.click('.shopping_cart_link');
+  await page.waitForSelector('.cart_list');
+  console.log('mobile: on cart page');
+  await page.screenshot({ path: path.join(screenshotsDir, 'mobile-cart.png') });
+
+  await page.click('#checkout');
+
+  await page.waitForSelector('#first-name');
+  await page.type('#first-name', 'Peter', { delay: 60 });
+  await page.type('#last-name', 'Parker', { delay: 60 });
+  await page.type('#postal-code', '12345', { delay: 60 });
+  await page.click('#continue');
+
+  await page.waitForSelector('#finish');
+  await page.waitForTimeout(1500);
+  await page.click('#finish');
+
+  await page.waitForSelector('.complete-header');
+  console.log('mobile: on confirmation page');
+  await page.screenshot({ path: path.join(screenshotsDir, 'mobile-confirmation.png') });
+
   //if want to close browser automatically , just un-comment the two lines below___________note: sid
   //await page.waitForTimeout(3000);
   //await browser.close();
