@@ -2,24 +2,11 @@ const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
 
-(async () => {
-
-  const browser = await chromium.launch({
-    headless: false,
-    channel: 'chrome'
-  });
-
-  // make sure screenshots always land somewhere consistent, create the folder if its not there yet____________note: sid
-  const screenshotsDir = path.join(__dirname, 'screenshots');
-  if (!fs.existsSync(screenshotsDir)) {
-    fs.mkdirSync(screenshotsDir);
-  }
-
-  // standard desktop size so screenshots look consistent, not whatever random size the window opens at
-  const page = await browser.newPage({
-    viewport: { width: 1920, height: 1080 }
-  });
-
+// runs the full login -> add to cart -> checkout flow at whatever viewport size you give it,
+// taking a screenshot at the product page, cart page, and confirmation page along the way.
+// pull this out into its own function so we're not copy-pasting the whole flow every time____________note: sid
+async function runCheckoutFlow(page, screenshotsDir, viewport, filenames) {
+  await page.setViewportSize(viewport);
   await page.goto('https://saucedemo.com');
 
   const title = await page.title();
@@ -38,7 +25,7 @@ const path = require('path');
   // .inventory_list shows up before the product images actually finish loading, so wait for the network to settle first or the screenshot catches them half loaded____note: sid
   await page.waitForLoadState('networkidle');
 
-  await page.screenshot({ path: path.join(screenshotsDir, 'product-page.png') });
+  await page.screenshot({ path: path.join(screenshotsDir, filenames.product) });
 
   // just grab the first product and add it to the cart
   await page.click('.inventory_item .btn_inventory');
@@ -53,7 +40,7 @@ const path = require('path');
   await page.waitForSelector('.cart_list');
   console.log('on cart page');
 
-  await page.screenshot({ path: path.join(screenshotsDir, 'cart-page.png') });
+  await page.screenshot({ path: path.join(screenshotsDir, filenames.cart) });
 
   await page.click('#checkout');
 
@@ -74,46 +61,38 @@ const path = require('path');
   const confirmationMsg = await page.textContent('.complete-header');
   console.log(`confirmation message: ${confirmationMsg}`);
 
-  await page.screenshot({ path: path.join(screenshotsDir, 'confirmation-page.png') });
+  await page.screenshot({ path: path.join(screenshotsDir, filenames.confirmation) });
+}
 
-  // now do it all again but at mobile size, to grab the same key screenshots on a phone-sized viewport
+(async () => {
+
+  const browser = await chromium.launch({
+    headless: false,
+    channel: 'chrome'
+  });
+
+  // make sure screenshots always land somewhere consistent, create the folder if its not there yet____________note: sid
+  const screenshotsDir = path.join(__dirname, 'screenshots');
+  if (!fs.existsSync(screenshotsDir)) {
+    fs.mkdirSync(screenshotsDir);
+  }
+
+  const page = await browser.newPage();
+
+  // desktop pass, standard size so screenshots look consistent, not whatever random size the window opens at
+  await runCheckoutFlow(page, screenshotsDir, { width: 1920, height: 1080 }, {
+    product: 'product-page.png',
+    cart: 'cart-page.png',
+    confirmation: 'confirmation-page.png'
+  });
+
+  // mobile pass, roughly an iphone x/11 size, same flow just repeated at a smaller viewport
   console.log('switching to mobile viewport, redoing the flow for mobile screenshots');
-  await page.setViewportSize({ width: 375, height: 812 }); // roughly an iphone x/11 size
-
-  await page.goto('https://saucedemo.com');
-
-  await page.type('#user-name', 'standard_user', { delay: 60 });
-  await page.type('#password', 'secret_sauce', { delay: 60 });
-  await page.click('#login-button');
-
-  await page.waitForSelector('.inventory_list');
-  await page.waitForLoadState('networkidle');
-  console.log('mobile: products page loaded');
-  await page.screenshot({ path: path.join(screenshotsDir, 'mobile-product.png') });
-
-  await page.click('.inventory_item .btn_inventory');
-
-  await page.waitForTimeout(500);
-  await page.click('.shopping_cart_link');
-  await page.waitForSelector('.cart_list');
-  console.log('mobile: on cart page');
-  await page.screenshot({ path: path.join(screenshotsDir, 'mobile-cart.png') });
-
-  await page.click('#checkout');
-
-  await page.waitForSelector('#first-name');
-  await page.type('#first-name', 'Peter', { delay: 60 });
-  await page.type('#last-name', 'Parker', { delay: 60 });
-  await page.type('#postal-code', '12345', { delay: 60 });
-  await page.click('#continue');
-
-  await page.waitForSelector('#finish');
-  await page.waitForTimeout(1500);
-  await page.click('#finish');
-
-  await page.waitForSelector('.complete-header');
-  console.log('mobile: on confirmation page');
-  await page.screenshot({ path: path.join(screenshotsDir, 'mobile-confirmation.png') });
+  await runCheckoutFlow(page, screenshotsDir, { width: 375, height: 812 }, {
+    product: 'mobile-product.png',
+    cart: 'mobile-cart.png',
+    confirmation: 'mobile-confirmation.png'
+  });
 
   //if want to close browser automatically , just un-comment the two lines below___________note: sid
   //await page.waitForTimeout(3000);
