@@ -101,6 +101,35 @@ async function runCheckoutFlow(page, screenshotsDir, viewport, filenames, option
   await page.screenshot({ path: path.join(screenshotsDir, filenames.confirmation) });
 }
 
+// deliberately breaks the UI on purpose so we've got a bad screenshot to test against too -
+// pushes the first "add to cart" button way outside the desktop viewport with some junk css,
+// injected straight into the page instead of touching the actual site______note: sid
+async function captureBrokenState(page, screenshotsDir) {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('https://saucedemo.com');
+
+  await page.type('#user-name', 'standard_user', { delay: 60 });
+  await page.type('#password', 'secret_sauce', { delay: 60 });
+  await page.click('#login-button');
+
+  await page.waitForSelector('.inventory_list');
+  await page.waitForLoadState('networkidle');
+
+  // shove the button way past the right edge of the screen so it clips off entirely
+  await page.addStyleTag({
+    content: `
+      .inventory_item:first-child .btn_inventory {
+        width: 2200px;
+        margin-left: 300px;
+        white-space: nowrap;
+      }
+    `
+  });
+
+  console.log('broken state injected, grabbing screenshot');
+  await page.screenshot({ path: path.join(screenshotsDir, 'broken-button-clip.png') });
+}
+
 (async () => {
 
   const browser = await chromium.launch({
@@ -130,6 +159,10 @@ async function runCheckoutFlow(page, screenshotsDir, viewport, filenames, option
     captureDetail: true
   });
 
+  // one deliberately broken screenshot too, for testing against a known bad UI state - desktop viewport, grouped with the rest of the desktop stuff above____note: sid
+  console.log('grabbing a broken UI screenshot on purpose');
+  await captureBrokenState(page, screenshotsDir);
+
   // mobile pass, roughly an iphone x/11 size, same flow just repeated at a smaller viewport
   console.log('switching to mobile viewport, redoing the flow for mobile screenshots');
   await runCheckoutFlow(page, screenshotsDir, { width: 375, height: 812 }, {
@@ -138,7 +171,7 @@ async function runCheckoutFlow(page, screenshotsDir, viewport, filenames, option
     confirmation: 'mobile-confirmation.png'
   });
 
-  //if want to close browser automatically , just un-comment the two lines below___________note: sid
-  //await page.waitForTimeout(3000);
-  //await browser.close();
+  // close it out automatically once everything's captured, no reason to leave the browser sitting there____note: sid
+  await page.waitForTimeout(2000);
+  await browser.close();
 })();
