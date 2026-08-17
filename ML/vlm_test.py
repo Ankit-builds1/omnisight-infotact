@@ -1,64 +1,85 @@
 import os
+import json
 import ollama
 
-image_paths = [
-    "ML/image_1.jpeg",
-    "ML/image_2.jpeg",
-    "ML/image_3.jpeg"
-]
+image_paths = ["ML/image_1.jpeg", "ML/image_2.jpeg", "ML/image_3.jpeg"]
 
 for img in image_paths:
-    # 1. File Check
     if not os.path.exists(img):
         print(f"\n⚠️ Skipping {img}: File not found!")
         continue
 
     print(f"\n==================== Testing: {img} ====================")
 
-    # 2. Crash-Proof Ollama API Call
     try:
         response = ollama.chat(
             model="llava",
+            options={"temperature": 0.1}, # <-- IMPORTANT: Consistency ke liye
             messages=[
                 {
                     "role": "user",
-                    "content": """
-Analyze this screenshot for software/UI bugs.
+                    "content": f"""
+You are a QA tester. Analyze this screenshot for UI/UX bugs.
 
-You must return ONLY valid JSON and nothing else.
+CRITICAL RULE: Look specifically for these bugs:
+1. Text cut off or overlapping inside input fields, buttons
+2. Misaligned elements
+3. Broken layouts
+4. Poor contrast making text unreadable
 
-The JSON must contain exactly these three fields:
+Return ONLY valid JSON. No markdown.
 
-{
+JSON Format:
+{{
     "bug_found": true or false,
     "description": "description of the bug",
-    "fix": "suggested fix"
-}
+    "fix": "suggested fix",
+    "confidence_score": 0.0 to 1.0,
+    "severity_level": "None" | "Minor" | "Major" | "Critical"
+}}
+
+EXAMPLE 1 - Bug Found:
+{{
+    "bug_found": true,
+    "description": "Text inside input fields is partially obscured and not fully visible",
+    "fix": "Increase padding and height of input fields in CSS",
+    "confidence_score": 0.85,
+    "severity_level": "Major"
+}}
+
+EXAMPLE 2 - No Bug:
+{{
+    "bug_found": false,
+    "description": "No bug detected.",
+    "fix": "No fix required.",
+    "confidence_score": 0.95,
+    "severity_level": "None"
+}}
 
 Rules:
-1. "bug_found" must be a boolean: true or false.
-2. If a bug is found, set "bug_found" to true.
-3. If a bug is found, describe the bug in "description".
-4. If no bug is found, set "bug_found" to false.
-5. If no bug is found, set "description" to "No bug detected."
-6. If no bug is found, set "fix" to "No fix required."
-7. Do not include any additional fields.
-8. Do not include Markdown.
-9. Do not write explanations outside the JSON.
-10. Return only the JSON object.
+1. If bug_found is false, severity_level MUST be "None"
+2. If bug_found is true, severity_level MUST be "Minor", "Major", or "Critical"
+3. Be honest. If you see overlapping text, it's a bug.
 """,
                     "images": [img],
                 }
             ],
         )
 
-        # 3. Safe Response Parsing
         if "message" in response and "content" in response["message"]:
-            print(response["message"]["content"])
-        else:
-            print("❌ Error: Ollama se valid response text nahi mila.")
+            result_str = response["message"]["content"].strip()
+            result_str = result_str.replace("```json", "").replace("```", "")
 
-    except ollama.ResponseError as e:
-        print(f"❌ Model Error: Model 'llava' load nahi ho paya. Details: {e.error}")
+            try:
+                result = json.loads(result_str.strip())
+                if result.get("bug_found") is False:
+                    result["severity_level"] = "None"
+                print(json.dumps(result, indent=4))
+            except json.JSONDecodeError:
+                print("❌ Error: Invalid JSON")
+                print(result_str)
+        else:
+            print("❌ Error: No response from Ollama.")
+
     except Exception as e:
-        print(f"❌ Connection Error: Kya Ollama application backend par chal raha hai? Details: {e}")
+        print(f"❌ Error: {e}")
