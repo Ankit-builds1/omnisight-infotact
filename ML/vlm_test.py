@@ -2,7 +2,7 @@ import os
 import json
 import ollama
 
-image_paths = ["ML/image_1.jpeg", "ML/image_2.jpeg", "ML/image_3.jpeg"]
+image_paths = ["image_1.jpeg", "image_2.jpeg", "image_3.jpeg"]
 
 for img in image_paths:
     if not os.path.exists(img):
@@ -35,7 +35,7 @@ JSON Format:
     "description": "description of the bug",
     "fix": "suggested fix",
     "confidence_score": 0.0 to 1.0,
-    "severity_level": "None" | "Minor" | "Major" | "Critical"
+    "severity_level": "Null" | "Minor" | "Major" | "Critical"
 }}
 
 EXAMPLE 1 - Bug Found:
@@ -53,11 +53,11 @@ EXAMPLE 2 - No Bug:
     "description": "No bug detected.",
     "fix": "No fix required.",
     "confidence_score": 0.95,
-    "severity_level": "None"
+    "severity_level": "Null"
 }}
 
 Rules:
-1. If bug_found is false, severity_level MUST be "None"
+1. If bug_found is false, severity_level MUST be "Null"
 2. If bug_found is true, severity_level MUST be "Minor", "Major", or "Critical"
 3. Be honest. If you see overlapping text, it's a bug.
 """,
@@ -73,7 +73,7 @@ Rules:
             try:
                 result = json.loads(result_str.strip())
                 if result.get("bug_found") is False:
-                    result["severity_level"] = "None"
+                    result["severity_level"] = "Null"
                 print(json.dumps(result, indent=4))
             except json.JSONDecodeError:
                 print("❌ Error: Invalid JSON")
