@@ -2,6 +2,17 @@ const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
 
+// takes the screenshot like normal, but also dumps the page's full html into a matching .html file
+// right next to it. the VLM needs both the image and the raw dom to figure out an actual code fix,
+// screenshot alone doesn't cut it______note: sid
+async function captureSnapshot(page, screenshotsDir, filename) {
+  await page.screenshot({ path: path.join(screenshotsDir, filename) });
+
+  const html = await page.content();
+  const htmlFilename = filename.replace('.png', '.html');
+  fs.writeFileSync(path.join(screenshotsDir, htmlFilename), html);
+}
+
 // runs the login -> add to cart -> checkout flow at whatever viewport size you give it,
 // taking screenshots along the way. the extra "options" param lets us bend the same flow
 // for different screenshot needs (login page, product detail, multiple items in cart, etc)
@@ -23,7 +34,7 @@ async function runCheckoutFlow(page, screenshotsDir, viewport, filenames, option
   // we normally blow straight past the login page, so only grab it when asked to
   if (captureLogin) {
     await page.waitForSelector('#login-button');
-    await page.screenshot({ path: path.join(screenshotsDir, filenames.login) });
+    await captureSnapshot(page, screenshotsDir, filenames.login);
   }
 
   // login with the standard demo account
@@ -40,7 +51,7 @@ async function runCheckoutFlow(page, screenshotsDir, viewport, filenames, option
   await page.waitForLoadState('networkidle');
 
   if (filenames.product) {
-    await page.screenshot({ path: path.join(screenshotsDir, filenames.product) });
+    await captureSnapshot(page, screenshotsDir, filenames.product);
   }
 
   // click into the first product's own page if we need the detail view, then head back to the list
@@ -50,7 +61,7 @@ async function runCheckoutFlow(page, screenshotsDir, viewport, filenames, option
     await productLinks[0].click();
     await page.waitForSelector('.inventory_details_name');
     await page.waitForLoadState('networkidle');
-    await page.screenshot({ path: path.join(screenshotsDir, filenames.detail) });
+    await captureSnapshot(page, screenshotsDir, filenames.detail);
 
     await page.click('#back-to-products');
     await page.waitForSelector('.inventory_list');
@@ -72,7 +83,7 @@ async function runCheckoutFlow(page, screenshotsDir, viewport, filenames, option
   await page.waitForSelector('.cart_list');
   console.log('on cart page');
 
-  await page.screenshot({ path: path.join(screenshotsDir, filenames.cart) });
+  await captureSnapshot(page, screenshotsDir, filenames.cart);
 
   // some runs just want the cart screenshot and nothing past it
   if (stopAtCart) {
@@ -98,7 +109,7 @@ async function runCheckoutFlow(page, screenshotsDir, viewport, filenames, option
   const confirmationMsg = await page.textContent('.complete-header');
   console.log(`confirmation message: ${confirmationMsg}`);
 
-  await page.screenshot({ path: path.join(screenshotsDir, filenames.confirmation) });
+  await captureSnapshot(page, screenshotsDir, filenames.confirmation);
 }
 
 // deliberately breaks the UI on purpose so we've got a bad screenshot to test against too -
@@ -127,7 +138,7 @@ async function captureBrokenState(page, screenshotsDir) {
   });
 
   console.log('broken state injected, grabbing screenshot');
-  await page.screenshot({ path: path.join(screenshotsDir, 'broken-button-clip.png') });
+  await captureSnapshot(page, screenshotsDir, 'broken-button-clip.png');
 }
 
 (async () => {
