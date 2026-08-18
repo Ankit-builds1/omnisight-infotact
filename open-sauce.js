@@ -148,17 +148,23 @@ async function captureBrokenState(page, screenshotsDir) {
     channel: 'chrome'
   });
 
-  // make sure screenshots always land somewhere consistent, create the folder if its not there yet____________note: sid
+  // make sure screenshots always land somewhere consistent, create the folders if they're not there yet.
+  // split into clean/ and broken/ so ML can just point at one folder or the other and know what its getting____note: sid
   const screenshotsDir = path.join(__dirname, 'screenshots');
-  if (!fs.existsSync(screenshotsDir)) {
-    fs.mkdirSync(screenshotsDir);
-  }
+  const cleanDir = path.join(screenshotsDir, 'clean');
+  const brokenDir = path.join(screenshotsDir, 'broken');
+
+  [screenshotsDir, cleanDir, brokenDir].forEach(dir => {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir);
+    }
+  });
 
   const page = await browser.newPage();
 
   // desktop pass - the "main" run, now grabbing everything in one go: login page, product list,
   // product detail, a multi-item cart, and all the way through to confirmation.______note: sid
-  await runCheckoutFlow(page, screenshotsDir, { width: 1920, height: 1080 }, {
+  await runCheckoutFlow(page, cleanDir, { width: 1920, height: 1080 }, {
     login: 'login-page.png',
     product: 'product-page.png',
     detail: 'product-detail.png',
@@ -172,11 +178,11 @@ async function captureBrokenState(page, screenshotsDir) {
 
   // one deliberately broken screenshot too, for testing against a known bad UI state - desktop viewport, grouped with the rest of the desktop stuff above____note: sid
   console.log('grabbing a broken UI screenshot on purpose');
-  await captureBrokenState(page, screenshotsDir);
+  await captureBrokenState(page, brokenDir);
 
   // mobile pass, roughly an iphone x/11 size, same flow just repeated at a smaller viewport
   console.log('switching to mobile viewport, redoing the flow for mobile screenshots');
-  await runCheckoutFlow(page, screenshotsDir, { width: 375, height: 812 }, {
+  await runCheckoutFlow(page, cleanDir, { width: 375, height: 812 }, {
     product: 'mobile-product.png',
     cart: 'mobile-cart.png',
     confirmation: 'mobile-confirmation.png'
