@@ -1,10 +1,14 @@
 import os
 import json
+import re
 import ollama
 
-image_paths = ["image_1.jpeg", "image_2.jpeg", "image_3.jpeg"]
+image_paths = [
+    "ML/images/broken-button-clip.png"
+]
 
 for img in image_paths:
+
     if not os.path.exists(img):
         print(f"\n⚠️ Skipping {img}: File not found!")
         continue
@@ -14,72 +18,145 @@ for img in image_paths:
     try:
         response = ollama.chat(
             model="llava",
-            options={"temperature": 0.1}, # <-- IMPORTANT: Consistency ke liye
             messages=[
                 {
                     "role": "user",
-                    "content": f"""
-You are a QA tester. Analyze this screenshot for UI/UX bugs.
+                    "content": """
+Analyze this UI screenshot.
 
-CRITICAL RULE: Look specifically for these bugs:
-1. Text cut off or overlapping inside input fields, buttons
-2. Misaligned elements
-3. Broken layouts
-4. Poor contrast making text unreadable
+Identify whether there is a visible UI bug.
 
-Return ONLY valid JSON. No markdown.
+Return ONLY valid JSON.
+Do NOT use markdown.
+Do NOT use ```json.
+Do NOT add any explanation outside the JSON.
 
-JSON Format:
-{{
-    "bug_found": true or false,
-    "description": "description of the bug",
-    "fix": "suggested fix",
-    "confidence_score": 0.0 to 1.0,
-    "severity_level": null | "Minor" | "Major" | "Critical"
-}}
+The JSON must have exactly these fields:
 
-EXAMPLE 1 - Bug Found:
-{{
-    "bug_found": true,
-    "description": "Text inside input fields is partially obscured and not fully visible",
-    "fix": "Increase padding and height of input fields in CSS",
-    "confidence_score": 0.85,
-    "severity_level": "Major"
-}}
-
-EXAMPLE 2 - No Bug:
-{{
-    "bug_found": false,
-    "description": "No bug detected.",
-    "fix": "No fix required.",
-    "confidence_score": 0.95,
-    "severity_level": null
-}}
-
-Rules:
-1. If bug_found is false, severity_level MUST be null
-2. If bug_found is true, severity_level MUST be "Minor", "Major", or "Critical"
-3. Be honest. If you see overlapping text, it's a bug.
+{
+  "bug_found": true or false,
+  "description": "short description of the bug",
+  "fix": "recommended fix",
+  "confidence_score": number between 0 and 100
+}
 """,
-                    "images": [img],
+                    "images": [img]
                 }
-            ],
+            ]
         )
 
-        if "message" in response and "content" in response["message"]:
-            result_str = response["message"]["content"].strip()
-            result_str = result_str.replace("```json", "").replace("```", "")
+        raw_output = response["message"]["content"]
+
+        print("\nRaw model output:")
+        print(raw_output)
+
+        # -----------------------------------------
+        # Clean Markdown code fences
+        # -----------------------------------------
+
+        clean_output = raw_output.strip()
+
+        # Remove opening ```json or ```
+        if clean_output.startswith("```"):
+            clean_output = re.sub(
+                r"^```(?:json)?\s*",
+                "",
+                clean_output,
+                flags=re.IGNORECASE
+            )
+
+        # Remove closing ```
+        clean_output = re.sub(
+            r"\s*```$",
+            "",
+            clean_output
+        ).strip()
+
+        # -----------------------------------------
+        # Convert to JSON
+        # -----------------------------------------
+
+        try:
+            result = json.loads(clean_output)
+
+            # -----------------------------------------
+            # Validate required fields
+            # -----------------------------------------
+
+            required_fields = [
+                "bug_found",
+                "description",
+                "fix",
+                "confidence_score"
+            ]
+
+            missing_fields = [
+                field
+                for field in required_fields
+                if field not in result
+            ]
+
+            if missing_fields:
+                print("\n❌ Missing fields:", missing_fields)
+                continue
+
+            # -----------------------------------------
+            # Validate bug_found
+            # -----------------------------------------
+
+            if not isinstance(result["bug_found"], bool):
+                print("\n❌ bug_found must be true or false")
+                continue
+
+            # -----------------------------------------
+            # Validate description and fix
+            # -----------------------------------------
+
+            if not isinstance(result["description"], str):
+                print("\n❌ description must be a string")
+                continue
+
+            if not isinstance(result["fix"], str):
+                print("\n❌ fix must be a string")
+                continue
+
+            # -----------------------------------------
+            # Convert confidence score to number
+            # -----------------------------------------
 
             try:
-                result = json.loads(result_str.strip())
-                if result.get("bug_found") is False:
-                    result["severity_level"] = None
-                print(json.dumps(result, indent=4))
-            except json.JSONDecodeError:
-                print("❌ Error: Invalid JSON")
-                print(result_str)
-        else:
-            print("❌ Error: No response from Ollama.")
+                result["confidence_score"] = float(
+                    result["confidence_score"]
+                )
+
+            except (ValueError, TypeError):
+                print("\n❌ Invalid confidence_score")
+                continue
+
+            # -----------------------------------------
+            # Validate confidence range
+            # -----------------------------------------
+
+            if not 0 <= result["confidence_score"] <= 100:
+                print(
+                    "\n❌ confidence_score must be "
+                    "between 0 and 100"
+                )
+                continue
+
+            # -----------------------------------------
+            # Final valid result
+            # -----------------------------------------
+
+            print("\n✅ Valid JSON:")
+            print(json.dumps(result, indent=2))
+
+        except json.JSONDecodeError as e:
+            print("\n❌ Model did not return valid JSON")
+            print("JSON Error:", e)
+
+            print("\nCleaned output:")
+            print(clean_output)
 
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"\n❌ Error: {e}")
