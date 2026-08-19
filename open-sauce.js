@@ -192,3 +192,7 @@ async function captureBrokenState(page, screenshotsDir) {
   await page.waitForTimeout(2000);
   await browser.close();
 })();
+
+
+//checked the screenshot dir_ and broken screenshot folder, everything looks fine , the screenshots are clear
+// ig ready for Mid-Review
