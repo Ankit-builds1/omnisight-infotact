@@ -65,3 +65,8 @@ A few small `waitForTimeout()` calls are sprinkled in purely so the browser run 
 - A ~1.5s pause on the order overview page before clicking Finish, so it doesn't flash by
 - A 2s pause before the browser auto-closes at the end
 
+Verified all the screenshots in screenshots/clean/ and screenshots/broken/
+- All clean screenshots correctly show bug-free UI states
+- broken-button-clip.png clearly shows the injected bug (button clipping outside viewport)
+- Every .png has a matching .html file
+Dataset is ready for ML's Vision Audit.
