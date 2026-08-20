@@ -52,7 +52,7 @@ Example:
 
 ### Confidence Score
 
-The confidence score is now normalized to the range `0.0–1.0`.
+The confidence score is now normalized to the rang `0.0–1.0`.
 
 Examples from the audit:
 
