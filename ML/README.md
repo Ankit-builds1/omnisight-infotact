@@ -1,6 +1,6 @@
 # ML - VLM Integration
 
-OpenRouter account created, API key stored in `.env`
+#OpenRouter account created, API key stored in `.env`
 ## VLM Testing Results
 
 Tested the local LLaVA model (`vlm_test.py`) on sample UI images:
