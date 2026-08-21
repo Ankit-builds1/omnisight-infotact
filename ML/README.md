@@ -72,7 +72,7 @@ The output no longer uses a `0–100` percentage-style confidence value.
 
 ### Test Image
 
-`ML/images/broken-button-clip.png`
+`ML/images/broken-button-clip2.png`
 
 This screenshot contains a deliberate UI inconsistency where the `+` icon is missing from the last item in a list while the other items contain the icon.
 

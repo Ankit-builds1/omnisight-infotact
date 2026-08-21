@@ -7,7 +7,7 @@ import ollama
 # Test images
 # -------------------------------------------------
 image_paths = [
-    "ML/images/broken-button-clip.png",
+    "ML/images/broken-button-clip2.png",
     "screenshots/product-page.png",
     "screenshots/cart-page.png",
     "screenshots/confirmation-page.png"
@@ -16,71 +16,42 @@ image_paths = [
 # -------------------------------------------------
 # Vision Audit Prompt
 # -------------------------------------------------
-
 prompt = """
-Analyze this UI screenshot and determine whether there is a visible UI bug.
+Analyze this UI screenshot VERY CAREFULLY and identify if there is a REAL, VISIBLE UI bug.
 
-Perform a careful visual inspection of the screenshot.
+CRITICAL RULES:
+1. ONLY report a bug if you can ACTUALLY SEE it in THIS SPECIFIC screenshot.
+2. DO NOT invent, assume, or imagine any UI elements not visibly present.
+3. Pay special attention to:
+   - Any button, image, or element that appears cut off at the right or left edge of the screen
+   - Any element that seems too wide for its container or extends past the visible boundary
+   - Text overlapping other text or elements
+   - Text that is unreadable due to poor contrast
 
-Check specifically for:
-- incorrect button labels
-- spelling mistakes
-- capitalization problems
-- incorrect or inconsistent text
-- alignment problems
-- spacing problems
-- overlapping elements
-- missing UI elements
-- broken UI elements
-- inconsistent fonts or styles
-- incorrect visual states
-- obvious layout problems
+4. When in doubt, choose bug_found: false rather than inventing a bug.
 
-A bug may be subtle. Pay close attention to small text and UI labels.
+5. IMPORTANT: You must ALWAYS include ALL 5 fields below in your JSON response, 
+   even when bug_found is false. Never omit description or fix.
+   - When bug_found is false: description = "No visible UI bugs detected in this screenshot.", fix = "No fix required."
+   - When bug_found is true: describe the exact bug and exact fix.
 
-Only report a bug when there is visible evidence in the screenshot.
-Do not invent or assume bugs.
-
-Return ONLY one valid JSON object.
-
-Do NOT use markdown.
-Do NOT use ```json.
-Do NOT add any explanation outside the JSON.
-
-The JSON must contain exactly these fields:
+Return ONLY valid JSON. Do NOT use markdown. Do NOT use ```json.
 
 {
-  "bug_found": true,
-  "description": "Clear description of the detected UI bug.",
-  "severity_level": "Minor",
-  "confidence_score": 0.95,
-  "fix": "Clear suggested fix for the detected UI bug."
+  "bug_found": true or false,
+  "description": "description (never empty, see rule 5)",
+  "fix": "fix (never empty, see rule 5)",
+  "severity_level": "Critical, Major, Minor, or null",
+  "confidence_score": number between 0.0 and 1.0
 }
 
 Rules:
-
-1. bug_found must be either true or false.
-
-2. If bug_found is true:
-   - description must clearly describe the visible bug.
-   - severity_level must be exactly one of:
-     "Critical", "Major", "Minor"
-   - confidence_score must be a decimal between 0.0 and 1.0.
-   - fix must explain how to correct the bug.
-
-3. If bug_found is false:
-   - description must say that no visible UI bug was detected.
-   - severity_level must be null.
-   - confidence_score must be a decimal between 0.0 and 1.0.
-   - fix must say that no fix is required.
-
-4. Never use confidence values such as 90 or 95.
-   Use values such as 0.90 or 0.95.
-
-5. Base the result only on visible evidence in the screenshot.
-
-6. Return ONLY the JSON object.
+1. bug_found must be true or false.
+2. If bug_found is true, severity_level must be "Critical", "Major", or "Minor".
+3. If bug_found is false, severity_level must be null.
+4. confidence_score must be between 0.0 and 1.0.
 """
+
 
 
 # -------------------------------------------------
