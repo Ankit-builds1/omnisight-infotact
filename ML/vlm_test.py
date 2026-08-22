@@ -9,9 +9,9 @@ from PIL import Image
 # -------------------------------------------------
 # Config
 # -------------------------------------------------
-MODEL = "llava"
+MODEL = "qwen2.5vl:3b"
 # Agar image isse chaudi hai to tiling hoga
-TILE_TRIGGER_WIDTH = 1400
+TILE_TRIGGER_WIDTH = 1920
 
 # Kitne horizontal tiles banane hain
 NUM_TILES = 3
@@ -20,9 +20,9 @@ NUM_TILES = 3
 TILE_OVERLAP = 100
 
 image_paths = [
-    "ML/images/broken-button-clip2.png",
+    "ML/images/broken-button-clip.png",
     "screenshots/product-page.png",
-    "screenshots/cart-page.png",
+    "screenshots/cart-multi-item.png",
     "screenshots/confirmation-page.png",
 ]
 
@@ -99,6 +99,20 @@ Rules:
 5. Base the result only on visible evidence in the screenshot.
 
 6. Return ONLY the JSON object.
+
+7. severity_level guidance:
+   - "Critical": the element is unusable or blocks the user flow entirely
+   - "Major": the element is significantly clipped, overlapping, or pushed off-screen
+   - "Minor": cosmetic spacing, alignment, or styling issue only
+
+8. Quote the affected element's text EXACTLY as it appears in the screenshot,
+   inside single quotes. Do not paraphrase or reconstruct names from memory.
+   If you cannot read the element's text clearly, set bug_found to false.
+
+9. This image may contain multiple similar UI elements (product cards, buttons,
+   rows). Report a bug ONLY for the specific element that visibly differs from
+   the others around it. If all similar elements look consistent with each
+   other, set bug_found to false.
 """
 
 
