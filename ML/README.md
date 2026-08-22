@@ -152,7 +152,7 @@ Result:
 
 | Screenshot               | Expected Result | VLM Result | Confidence | Status |
 | ------------------------ | --------------- | ---------- | ---------: | ------ |
-| `broken-button-clip.png` | Bug detected    | `true`     |       0.90 | PASS   |
+| `broken-button-clip2.png` | Bug detected    | `true`     |       0.90 | PASS   |
 | `cart-page.png`          | No bug          | `false`    |       0.99 | PASS   |
 | `confirmation-page.png`  | No bug          | `false`    |       0.90 | PASS   |
 

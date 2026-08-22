@@ -1,63 +1,301 @@
 import os
 import json
 import re
+import tempfile
+
 import ollama
+from PIL import Image
 
 # -------------------------------------------------
-# Test images
+# Config
 # -------------------------------------------------
+MODEL = "llava"
+# Agar image isse chaudi hai to tiling hoga
+TILE_TRIGGER_WIDTH = 1400
+
+# Kitne horizontal tiles banane hain
+NUM_TILES = 3
+
+# Tiles ke beech overlap (px) - taaki border pe koi bug na chhoote
+TILE_OVERLAP = 100
+
 image_paths = [
     "ML/images/broken-button-clip2.png",
     "screenshots/product-page.png",
     "screenshots/cart-page.png",
-    "screenshots/confirmation-page.png"
+    "screenshots/confirmation-page.png",
 ]
+
+REQUIRED_FIELDS = [
+    "bug_found",
+    "description",
+    "severity_level",
+    "confidence_score",
+    "fix",
+]
+
+SEVERITY_RANK = {"Minor": 1, "Major": 2, "Critical": 3}
+
 
 # -------------------------------------------------
 # Vision Audit Prompt
 # -------------------------------------------------
 prompt = """
-Analyze this UI screenshot VERY CAREFULLY and identify if there is a REAL, VISIBLE UI bug.
+Analyze this UI screenshot and determine whether there is a visible UI bug.
 
-CRITICAL RULES:
-1. ONLY report a bug if you can ACTUALLY SEE it in THIS SPECIFIC screenshot.
-2. DO NOT invent, assume, or imagine any UI elements not visibly present.
-3. Pay special attention to:
-   - Any button, image, or element that appears cut off at the right or left edge of the screen
-   - Any element that seems too wide for its container or extends past the visible boundary
-   - Text overlapping other text or elements
-   - Text that is unreadable due to poor contrast
+This image may be a horizontal SLICE of a larger page screenshot.
+Judge only what is visible in this slice. Content being cut off at the
+left or right edge of the slice is NOT a bug by itself - that is just
+where the slice ends.
 
-4. When in doubt, choose bug_found: false rather than inventing a bug.
+Check specifically for:
+- buttons or elements that overflow, are clipped, or pushed off-screen
+- incorrect button labels
+- spelling mistakes
+- capitalization problems
+- alignment problems
+- spacing problems
+- overlapping elements
+- missing or broken UI elements
+- inconsistent fonts or styles
+- obvious layout problems
 
-5. IMPORTANT: You must ALWAYS include ALL 5 fields below in your JSON response, 
-   even when bug_found is false. Never omit description or fix.
-   - When bug_found is false: description = "No visible UI bugs detected in this screenshot.", fix = "No fix required."
-   - When bug_found is true: describe the exact bug and exact fix.
+Only report a bug when there is clear visible evidence.
+Do not invent or assume bugs. If unsure, report bug_found as false.
 
-Return ONLY valid JSON. Do NOT use markdown. Do NOT use ```json.
+Return ONLY one valid JSON object.
+Do NOT use markdown.
+Do NOT use ```json.
+Do NOT add any explanation outside the JSON.
+
+The JSON must contain exactly these fields:
 
 {
-  "bug_found": true or false,
-  "description": "description (never empty, see rule 5)",
-  "fix": "fix (never empty, see rule 5)",
-  "severity_level": "Critical, Major, Minor, or null",
-  "confidence_score": number between 0.0 and 1.0
+  "bug_found": true,
+  "description": "Clear description of the detected UI bug.",
+  "severity_level": "Minor",
+  "confidence_score": 0.95,
+  "fix": "Clear suggested fix for the detected UI bug."
 }
 
 Rules:
-1. bug_found must be true or false.
-2. If bug_found is true, severity_level must be "Critical", "Major", or "Minor".
-3. If bug_found is false, severity_level must be null.
-4. confidence_score must be between 0.0 and 1.0.
+
+1. bug_found must be either true or false.
+
+2. If bug_found is true:
+   - description must clearly describe the visible bug.
+   - severity_level must be exactly one of: "Critical", "Major", "Minor"
+   - confidence_score must be a decimal between 0.0 and 1.0.
+   - fix must explain how to correct the bug.
+
+3. If bug_found is false:
+   - description must say that no visible UI bug was detected.
+   - severity_level must be null.
+   - confidence_score must be a decimal between 0.0 and 1.0.
+   - fix must say that no fix is required.
+
+4. Never use confidence values such as 90 or 95. Use 0.90 or 0.95.
+
+5. Base the result only on visible evidence in the screenshot.
+
+6. Return ONLY the JSON object.
 """
 
 
+# -------------------------------------------------
+# Tiling: image ko overlapping horizontal slices me kaato
+# -------------------------------------------------
+def make_tiles(img_path, temp_dir):
+    """
+    Returns list of (label, path).
+    Agar image chhoti hai to original hi single tile ke roop me return.
+    """
+    with Image.open(img_path) as im:
+        im = im.convert("RGB")
+        width, height = im.size
+
+        print(f"   Image size: {width} x {height}")
+
+        if width <= TILE_TRIGGER_WIDTH:
+            print("   Tiling not needed (image is small enough)")
+            return [("full", img_path)]
+
+        step = width // NUM_TILES
+        tiles = []
+
+        for i in range(NUM_TILES):
+            left = max(0, i * step - TILE_OVERLAP)
+            right = min(width, (i + 1) * step + TILE_OVERLAP)
+
+            crop = im.crop((left, 0, right, height))
+
+            tile_path = os.path.join(
+                temp_dir,
+                f"tile_{i + 1}.png"
+            )
+            crop.save(tile_path)
+
+            label = f"tile {i + 1}/{NUM_TILES} (x: {left}-{right})"
+            tiles.append((label, tile_path))
+
+        print(f"   Split into {NUM_TILES} overlapping tiles")
+        return tiles
+
 
 # -------------------------------------------------
-# Test each screenshot
+# Ek image (ya tile) ko VLM me bhejo
 # -------------------------------------------------
+def run_vlm(img_path):
+    response = ollama.chat(
+        model=MODEL,
+        messages=[
+            {
+                "role": "user",
+                "content": prompt,
+                "images": [img_path],
+            }
+        ],
+    )
+    return response["message"]["content"]
 
+
+# -------------------------------------------------
+# Markdown fences hatao
+# -------------------------------------------------
+def clean_json_text(raw_output):
+    text = raw_output.strip()
+
+    text = re.sub(
+        r"^```(?:json)?\s*",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    text = re.sub(r"\s*```$", "", text).strip()
+
+    return text
+
+
+# -------------------------------------------------
+# Schema validation - valid dict ya None return karta hai
+# -------------------------------------------------
+def validate_result(result):
+    missing = [f for f in REQUIRED_FIELDS if f not in result]
+    if missing:
+        print("   ❌ Missing fields:", missing)
+        return None
+
+    extra = set(result.keys()) - set(REQUIRED_FIELDS)
+    if extra:
+        print("   ❌ Unexpected fields:", extra)
+        return None
+
+    if not isinstance(result["bug_found"], bool):
+        print("   ❌ bug_found must be true or false")
+        return None
+
+    if not isinstance(result["description"], str):
+        print("   ❌ description must be a string")
+        return None
+
+    if not isinstance(result["fix"], str):
+        print("   ❌ fix must be a string")
+        return None
+
+    if result["bug_found"]:
+        if result["severity_level"] not in SEVERITY_RANK:
+            print("   ❌ Invalid severity_level (need Critical/Major/Minor)")
+            return None
+    else:
+        if result["severity_level"] is not None:
+            print("   ❌ severity_level must be null when bug_found is false")
+            return None
+
+    try:
+        result["confidence_score"] = float(result["confidence_score"])
+    except (ValueError, TypeError):
+        print("   ❌ Invalid confidence_score")
+        return None
+
+    if not 0.0 <= result["confidence_score"] <= 1.0:
+        print("   ❌ confidence_score must be between 0.0 and 1.0")
+        return None
+
+    return result
+
+
+# -------------------------------------------------
+# Ek tile ka pura cycle: VLM -> clean -> parse -> validate
+# -------------------------------------------------
+def analyze_tile(label, tile_path):
+    print(f"\n   ----- {label} -----")
+
+    try:
+        raw_output = run_vlm(tile_path)
+    except Exception as e:
+        print(f"   ❌ VLM error: {e}")
+        return None
+
+    print("   Raw model output:")
+    print("   " + raw_output.strip().replace("\n", "\n   "))
+
+    cleaned = clean_json_text(raw_output)
+
+    try:
+        parsed = json.loads(cleaned)
+    except json.JSONDecodeError as e:
+        print("   ❌ Model did not return valid JSON")
+        print("   JSON Error:", e)
+        return None
+
+    return validate_result(parsed)
+
+
+# -------------------------------------------------
+# Tile results ko ek final report me merge karo
+# Rule: koi bhi tile me bug -> page me bug
+# -------------------------------------------------
+def merge_results(tile_results):
+    valid = [r for r in tile_results if r is not None]
+
+    if not valid:
+        return None
+
+    bugs = [r for r in valid if r["bug_found"]]
+
+    if not bugs:
+        # Sabse kam confidence lo - conservative "no bug"
+        lowest = min(valid, key=lambda r: r["confidence_score"])
+        return {
+            "bug_found": False,
+            "description": "No visible UI bug was detected in this screenshot.",
+            "severity_level": None,
+            "confidence_score": lowest["confidence_score"],
+            "fix": "No fix is required.",
+        }
+
+    # Sabse serious bug chuno; tie ho to highest confidence
+    worst = max(
+        bugs,
+        key=lambda r: (
+            SEVERITY_RANK[r["severity_level"]],
+            r["confidence_score"],
+        ),
+    )
+
+    return {
+        "bug_found": True,
+        "description": worst["description"],
+        "severity_level": worst["severity_level"],
+        "confidence_score": worst["confidence_score"],
+        "fix": worst["fix"],
+    }
+
+
+# -------------------------------------------------
+# Main loop
+# -------------------------------------------------
 for img in image_paths:
 
     if not os.path.exists(img):
@@ -67,192 +305,29 @@ for img in image_paths:
     print(f"\n==================== Testing: {img} ====================")
 
     try:
+        with tempfile.TemporaryDirectory() as temp_dir:
 
-        # -----------------------------------------
-        # Send image to LLaVA
-        # -----------------------------------------
+            tiles = make_tiles(img, temp_dir)
 
-        response = ollama.chat(
-            model="llava",
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt,
-                    "images": [img]
-                }
-            ]
-        )
+            tile_results = []
+            for label, tile_path in tiles:
+                tile_results.append(analyze_tile(label, tile_path))
 
-        # -----------------------------------------
-        # Get raw model output
-        # -----------------------------------------
+            final = merge_results(tile_results)
 
-        raw_output = response["message"]["content"]
+        print("\n   ===== MERGED RESULT =====")
 
-        print("\nRaw model output:")
-        print(raw_output)
+        if final is None:
+            print("\n❌ No valid result from any tile")
+            continue
 
-        # -----------------------------------------
-        # Clean Markdown code fences
-        # -----------------------------------------
+        print("\n✅ Valid JSON:")
+        print(json.dumps(final, indent=2))
 
-        clean_output = raw_output.strip()
-
-        clean_output = re.sub(
-            r"^```(?:json)?\s*",
-            "",
-            clean_output,
-            flags=re.IGNORECASE
-        )
-
-        clean_output = re.sub(
-            r"\s*```$",
-            "",
-            clean_output
-        ).strip()
-
-        # -----------------------------------------
-        # Parse JSON
-        # -----------------------------------------
-
-        try:
-
-            result = json.loads(clean_output)
-
-            # -----------------------------------------
-            # Required fields
-            # -----------------------------------------
-
-            required_fields = [
-                "bug_found",
-                "description",
-                "severity_level",
-                "confidence_score",
-                "fix"
-            ]
-
-            missing_fields = [
-                field
-                for field in required_fields
-                if field not in result
-            ]
-
-            if missing_fields:
-                print("\n❌ Missing fields:", missing_fields)
-                continue
-
-            # -----------------------------------------
-            # Check for unexpected fields
-            # -----------------------------------------
-
-            extra_fields = (
-                set(result.keys()) - set(required_fields)
-            )
-
-            if extra_fields:
-                print("\n❌ Unexpected fields:", extra_fields)
-                continue
-
-            # -----------------------------------------
-            # Validate bug_found
-            # -----------------------------------------
-
-            if not isinstance(result["bug_found"], bool):
-                print("\n❌ bug_found must be true or false")
-                continue
-
-            # -----------------------------------------
-            # Validate description
-            # -----------------------------------------
-
-            if not isinstance(result["description"], str):
-                print("\n❌ description must be a string")
-                continue
-
-            # -----------------------------------------
-            # Validate fix
-            # -----------------------------------------
-
-            if not isinstance(result["fix"], str):
-                print("\n❌ fix must be a string")
-                continue
-
-            # -----------------------------------------
-            # Validate severity_level
-            # -----------------------------------------
-
-            if result["bug_found"]:
-
-                if result["severity_level"] not in [
-                    "Critical",
-                    "Major",
-                    "Minor"
-                ]:
-                    print("\n❌ Invalid severity_level")
-                    print(
-                        "Expected: Critical, Major, or Minor"
-                    )
-                    continue
-
-            else:
-
-                if result["severity_level"] is not None:
-                    print(
-                        "\n❌ severity_level must be null "
-                        "when bug_found is false"
-                    )
-                    continue
-
-            # -----------------------------------------
-            # Validate confidence_score
-            # -----------------------------------------
-
-            try:
-
-                result["confidence_score"] = float(
-                    result["confidence_score"]
-                )
-
-            except (ValueError, TypeError):
-
-                print("\n❌ Invalid confidence_score")
-                continue
-
-            if not 0.0 <= result["confidence_score"] <= 1.0:
-
-                print(
-                    "\n❌ confidence_score must be "
-                    "between 0.0 and 1.0"
-                )
-                continue
-
-            # -----------------------------------------
-            # Final valid result
-            # -----------------------------------------
-
-            print("\n✅ Valid JSON:")
-            print(json.dumps(result, indent=2))
-
-            # -----------------------------------------
-            # Vision Audit Result
-            # -----------------------------------------
-
-            if result["bug_found"]:
-
-                print("\n🔴 BUG DETECTED")
-
-            else:
-
-                print("\n🟢 NO BUG DETECTED")
-
-        except json.JSONDecodeError as e:
-
-            print("\n❌ Model did not return valid JSON")
-            print("JSON Error:", e)
-
-            print("\nCleaned output:")
-            print(clean_output)
+        if final["bug_found"]:
+            print("\n🔴 BUG DETECTED")
+        else:
+            print("\n🟢 NO BUG DETECTED")
 
     except Exception as e:
-
         print(f"\n❌ Error: {e}")
