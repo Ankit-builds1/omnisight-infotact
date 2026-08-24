@@ -114,8 +114,10 @@ async function runCheckoutFlow(page, screenshotsDir, viewport, filenames, option
 
 // deliberately breaks the UI on purpose so we've got a bad screenshot to test against too -
 // pushes the first "add to cart" button way outside the desktop viewport with some junk css,
-// injected straight into the page instead of touching the actual site______note: sid
-async function captureBrokenState(page, screenshotsDir) {
+// injected straight into the page instead of touching the actual site.
+// applyBrokenCss lets you re-run this exact same flow WITHOUT the bug, once a fix has gone in,
+// so you get a clean "after" screenshot of the same page for comparison______note: sid
+async function captureBrokenState(page, screenshotsDir, applyBrokenCss = true, filename = 'broken-button-clip.png') {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('https://saucedemo.com');
 
@@ -126,19 +128,32 @@ async function captureBrokenState(page, screenshotsDir) {
   await page.waitForSelector('.inventory_list');
   await page.waitForLoadState('networkidle');
 
-  // shove the button way past the right edge of the screen so it clips off entirely
-  await page.addStyleTag({
-    content: `
-      .inventory_item:first-child .btn_inventory {
-        width: 2200px;
-        margin-left: 300px;
-        white-space: nowrap;
-      }
-    `
-  });
+  if (applyBrokenCss) {
+    // shove the button way past the right edge of the screen so it clips off entirely
+    await page.addStyleTag({
+      content: `
+        .inventory_item:first-child .btn_inventory {
+          width: 2200px !important;
+          margin-left: 300px !important;
+          white-space: nowrap !important;
+        }
+      `
+    });
+    console.log('broken state injected, grabbing screenshot');
+  } else {
+    console.log('skipping the broken css this time, grabbing the after-fix screenshot');
+  }
 
-  console.log('broken state injected, grabbing screenshot');
-  await captureSnapshot(page, screenshotsDir, 'broken-button-clip.png');
+  await captureSnapshot(page, screenshotsDir, filename);
+}
+
+// generic re-run helper - takes whatever capture function you used the first time (runCheckoutFlow
+// or captureBrokenState) plus the same args, and just calls it again. mainly for before/after
+// comparisons: run the broken flow once, apply a fix, then re-run the same flow again pointed
+// at a different folder to grab the "after" screenshot for the same page______note: sid
+async function rerunFlowForComparison(flowFn, ...args) {
+  console.log('re-running the flow for a before/after comparison');
+  await flowFn(...args);
 }
 
 (async () => {
@@ -153,8 +168,9 @@ async function captureBrokenState(page, screenshotsDir) {
   const screenshotsDir = path.join(__dirname, 'screenshots');
   const cleanDir = path.join(screenshotsDir, 'clean');
   const brokenDir = path.join(screenshotsDir, 'broken');
+  const afterDir = path.join(screenshotsDir, 'after'); // for the fixed re-run, to diff against broken/
 
-  [screenshotsDir, cleanDir, brokenDir].forEach(dir => {
+  [screenshotsDir, cleanDir, brokenDir, afterDir].forEach(dir => {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir);
     }
@@ -179,6 +195,11 @@ async function captureBrokenState(page, screenshotsDir) {
   // one deliberately broken screenshot too, for testing against a known bad UI state - desktop viewport, grouped with the rest of the desktop stuff above____note: sid
   console.log('grabbing a broken UI screenshot on purpose');
   await captureBrokenState(page, brokenDir);
+
+  // simulate a fix going in and re-run the exact same page to confirm it now looks right -
+  // same flow, just no broken css this time, saved into after/ so it can be diffed against
+  // the broken one for a before/after comparison______note: sid
+  await rerunFlowForComparison(captureBrokenState, page, afterDir, false, 'broken-button-fixed.png');
 
   // mobile pass, roughly an iphone x/11 size, same flow just repeated at a smaller viewport
   console.log('switching to mobile viewport, redoing the flow for mobile screenshots');
