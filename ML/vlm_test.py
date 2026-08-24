@@ -9,14 +9,10 @@ from PIL import Image
 # -------------------------------------------------
 # Config
 # -------------------------------------------------
-MODEL = "qwen2.5vl:3b"
-# Agar image isse chaudi hai to tiling hoga
-TILE_TRIGGER_WIDTH = 1920
+MODEL = "qwen2.5vl:7b"
 
-# Kitne horizontal tiles banane hain
+TILE_TRIGGER_WIDTH = 2000
 NUM_TILES = 3
-
-# Tiles ke beech overlap (px) - taaki border pe koi bug na chhoote
 TILE_OVERLAP = 100
 
 image_paths = [
@@ -40,90 +36,41 @@ SEVERITY_RANK = {"Minor": 1, "Major": 2, "Critical": 3}
 # -------------------------------------------------
 # Vision Audit Prompt
 # -------------------------------------------------
-prompt = """
-Analyze this UI screenshot and determine whether there is a visible UI bug.
+prompt = """You are an expert QA Automation Visual Auditor.
+Examine this UI screenshot carefully for visual bugs.
 
-This image may be a horizontal SLICE of a larger page screenshot.
-Judge only what is visible in this slice. Content being cut off at the
-left or right edge of the slice is NOT a bug by itself - that is just
-where the slice ends.
+LOOK SPECIFICALLY FOR:
+- Horizontal layout overflow or stretched/clipped button borders
+- Broken, unreadable, or truncated button controls
+- Overlapping text, misplaced grids, or misaligned containers
 
-Check specifically for:
-- buttons or elements that overflow, are clipped, or pushed off-screen
-- incorrect button labels
-- spelling mistakes
-- capitalization problems
-- alignment problems
-- spacing problems
-- overlapping elements
-- missing or broken UI elements
-- inconsistent fonts or styles
-- obvious layout problems
+RULES:
+1. Report a bug only if an element is visibly clipped, overflowing, or
+   broken WHEN COMPARED to similar elements on the same page. If similar
+   elements (buttons, product cards) all look the same as each other,
+   that is normal - do not report a bug.
+2. If "bug_found" is true:
+   - "severity_level" MUST be "Major" or "Critical".
+   - "description" MUST name the exact element affected and describe the
+     visual defect you can actually see.
+   - "fix" MUST suggest a layout fix.
+3. If no visible defects, set "bug_found": false, "severity_level": null,
+   "fix": "No fix required."
 
-Only report a bug when there is clear visible evidence.
-Do not invent or assume bugs. If unsure, report bug_found as false.
-
-Return ONLY one valid JSON object.
-Do NOT use markdown.
-Do NOT use ```json.
-Do NOT add any explanation outside the JSON.
-
-The JSON must contain exactly these fields:
-
+Return ONLY raw JSON matching this schema:
 {
   "bug_found": true,
-  "description": "Clear description of the detected UI bug.",
-  "severity_level": "Minor",
+  "description": "string",
+  "severity_level": "Major",
   "confidence_score": 0.95,
-  "fix": "Clear suggested fix for the detected UI bug."
-}
-
-Rules:
-
-1. bug_found must be either true or false.
-
-2. If bug_found is true:
-   - description must clearly describe the visible bug.
-   - severity_level must be exactly one of: "Critical", "Major", "Minor"
-   - confidence_score must be a decimal between 0.0 and 1.0.
-   - fix must explain how to correct the bug.
-
-3. If bug_found is false:
-   - description must say that no visible UI bug was detected.
-   - severity_level must be null.
-   - confidence_score must be a decimal between 0.0 and 1.0.
-   - fix must say that no fix is required.
-
-4. Never use confidence values such as 90 or 95. Use 0.90 or 0.95.
-
-5. Base the result only on visible evidence in the screenshot.
-
-6. Return ONLY the JSON object.
-
-7. severity_level guidance:
-   - "Critical": the element is unusable or blocks the user flow entirely
-   - "Major": the element is significantly clipped, overlapping, or pushed off-screen
-   - "Minor": cosmetic spacing, alignment, or styling issue only
-
-8. Quote the affected element's text EXACTLY as it appears in the screenshot,
-   inside single quotes. Do not paraphrase or reconstruct names from memory.
-   If you cannot read the element's text clearly, set bug_found to false.
-
-9. This image may contain multiple similar UI elements (product cards, buttons,
-   rows). Report a bug ONLY for the specific element that visibly differs from
-   the others around it. If all similar elements look consistent with each
-   other, set bug_found to false.
-"""
+  "fix": "string"
+}"""
 
 
 # -------------------------------------------------
-# Tiling: image ko overlapping horizontal slices me kaato
+# Tiling Logic
 # -------------------------------------------------
 def make_tiles(img_path, temp_dir):
-    """
-    Returns list of (label, path).
-    Agar image chhoti hai to original hi single tile ke roop me return.
-    """
     with Image.open(img_path) as im:
         im = im.convert("RGB")
         width, height = im.size
@@ -143,10 +90,7 @@ def make_tiles(img_path, temp_dir):
 
             crop = im.crop((left, 0, right, height))
 
-            tile_path = os.path.join(
-                temp_dir,
-                f"tile_{i + 1}.png"
-            )
+            tile_path = os.path.join(temp_dir, f"tile_{i + 1}.png")
             crop.save(tile_path)
 
             label = f"tile {i + 1}/{NUM_TILES} (x: {left}-{right})"
@@ -157,11 +101,17 @@ def make_tiles(img_path, temp_dir):
 
 
 # -------------------------------------------------
-# Ek image (ya tile) ko VLM me bhejo
+# Ollama Runner
+# num_ctx=8192 required - default 4096 caused image tokens
+# to overflow, making the model respond without seeing the image
 # -------------------------------------------------
 def run_vlm(img_path):
     response = ollama.chat(
         model=MODEL,
+        format="json",
+        options={
+            "num_ctx": 8192
+        },
         messages=[
             {
                 "role": "user",
@@ -174,25 +124,17 @@ def run_vlm(img_path):
 
 
 # -------------------------------------------------
-# Markdown fences hatao
+# Output Sanitization
 # -------------------------------------------------
 def clean_json_text(raw_output):
     text = raw_output.strip()
-
-    text = re.sub(
-        r"^```(?:json)?\s*",
-        "",
-        text,
-        flags=re.IGNORECASE,
-    )
-
+    text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
     text = re.sub(r"\s*```$", "", text).strip()
-
     return text
 
 
 # -------------------------------------------------
-# Schema validation - valid dict ya None return karta hai
+# Schema Validation
 # -------------------------------------------------
 def validate_result(result):
     missing = [f for f in REQUIRED_FIELDS if f not in result]
@@ -240,7 +182,7 @@ def validate_result(result):
 
 
 # -------------------------------------------------
-# Ek tile ka pura cycle: VLM -> clean -> parse -> validate
+# Execute Tile Analysis
 # -------------------------------------------------
 def analyze_tile(label, tile_path):
     print(f"\n   ----- {label} -----")
@@ -267,8 +209,7 @@ def analyze_tile(label, tile_path):
 
 
 # -------------------------------------------------
-# Tile results ko ek final report me merge karo
-# Rule: koi bhi tile me bug -> page me bug
+# Merge Results
 # -------------------------------------------------
 def merge_results(tile_results):
     valid = [r for r in tile_results if r is not None]
@@ -279,7 +220,6 @@ def merge_results(tile_results):
     bugs = [r for r in valid if r["bug_found"]]
 
     if not bugs:
-        # Sabse kam confidence lo - conservative "no bug"
         lowest = min(valid, key=lambda r: r["confidence_score"])
         return {
             "bug_found": False,
@@ -289,7 +229,6 @@ def merge_results(tile_results):
             "fix": "No fix is required.",
         }
 
-    # Sabse serious bug chuno; tie ho to highest confidence
     worst = max(
         bugs,
         key=lambda r: (
@@ -308,40 +247,39 @@ def merge_results(tile_results):
 
 
 # -------------------------------------------------
-# Main loop
+# Main Execution
 # -------------------------------------------------
-for img in image_paths:
-
-    if not os.path.exists(img):
-        print(f"\n⚠️ Skipping {img}: File not found!")
-        continue
-
-    print(f"\n==================== Testing: {img} ====================")
-
-    try:
-        with tempfile.TemporaryDirectory() as temp_dir:
-
-            tiles = make_tiles(img, temp_dir)
-
-            tile_results = []
-            for label, tile_path in tiles:
-                tile_results.append(analyze_tile(label, tile_path))
-
-            final = merge_results(tile_results)
-
-        print("\n   ===== MERGED RESULT =====")
-
-        if final is None:
-            print("\n❌ No valid result from any tile")
+if __name__ == "__main__":
+    for img in image_paths:
+        if not os.path.exists(img):
+            print(f"\n⚠️ Skipping {img}: File not found!")
             continue
 
-        print("\n✅ Valid JSON:")
-        print(json.dumps(final, indent=2))
+        print(f"\n==================== Testing: {img} ====================")
 
-        if final["bug_found"]:
-            print("\n🔴 BUG DETECTED")
-        else:
-            print("\n🟢 NO BUG DETECTED")
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                tiles = make_tiles(img, temp_dir)
 
-    except Exception as e:
-        print(f"\n❌ Error: {e}")
+                tile_results = []
+                for label, tile_path in tiles:
+                    tile_results.append(analyze_tile(label, tile_path))
+
+                final = merge_results(tile_results)
+
+            print("\n   ===== MERGED RESULT =====")
+
+            if final is None:
+                print("\n❌ No valid result from any tile")
+                continue
+
+            print("\n✅ Valid JSON:")
+            print(json.dumps(final, indent=2))
+
+            if final["bug_found"]:
+                print("\n🔴 BUG DETECTED")
+            else:
+                print("\n🟢 NO BUG DETECTED")
+
+        except Exception as e:
+            print(f"\n❌ Error: {e}")
