@@ -190,21 +190,67 @@ Therefore, the current VLM implementation successfully passes the basic Vision A
 ### Key Improvements over LLaVA
 1. Zero false positives on background grid alignment for clean UI components.
 2. Strict single-quote text grounding on clipped elements.
+## Vision Audit Results — Qwen2.5-VL 7B
 
-## Week 2 Progress & Milestone Report
+Model: qwen2.5vl:7b (local, via Ollama)
+Config: num_ctx=8192, format=json, tiling disabled (images ≤2000px)
 
-### Completed Objectives
-* **Model Upgrade & Validation:** Successfully migrated baseline tests from LLaVA to `qwen2.5-vl:7b` for reduced hallucination and exact element grounding.
-* **Schema Standardisation:** Locked JSON schema (`bug_found`, `description`, `severity_level`, `confidence_score`, `fix`) with normalised confidence scores ($0.0 - 1.0$).
-* **False-Positive Elimination:** Verified 0% false-positive rate across clean UI flows (`cart`, `product-page`, `confirmation-page`).
-* **Environment Configuration:** Local Ollama runtime verified alongside OpenRouter API fallback setup in `.env`.
+| Screenshot | bug_found | Element claimed | Correct? |
+|---|---|---|---|
+| broken-button-clip.png | true | Sauce Labs Fleece Jacket | Bug detected, wrong element (actual bug is on Backpack) |
+| product-page.png | true | Sauce Labs Fleece Jacket | False positive |
+| cart-multi-item.png | true | Sauce Labs Bike Light | False positive |
+| confirmation-page.png | true | Back Home button | False positive |
 
-### Performance Metrics (Week 2 Benchmarks)
-* **Inference Speed:** ~1.5s - 2.5s per image (Local execution via Ollama).
-* **Detection Accuracy:** 100% pass rate on deliberate layout defects and element clipping test suites.
-* **Output Format:** 100% valid JSON compliance across all benchmark runs.
+### Finding
 
-### Next Steps (Week 3 Objectives)
-1. **CI/CD Pipeline Integration:** Hook VLM assertion script with Playwright / Selenium UI test runs.
-2. **Batch Audit Runner:** Script automated directory-wide screenshot evaluations with aggregated summary generation.
-3. **Edge-Case Dataset Expansion:** Test low-contrast UI elements, dynamic overlays, and non-English text components.
+The VLM consistently detects "something clipped" but cannot reliably
+identify WHICH element is actually affected. It over-triggers on clean
+pages and does not correctly localize the deliberately injected bug.
+
+This is a known limitation of general-purpose 7B-parameter vision models
+on fine-grained visual comparison tasks. It is not a prompt engineering
+gap — six prompt variants were tested (see commit history), each trading
+recall for precision or vice versa, none achieving both.
+
+### Why this doesn't block the pipeline
+
+The backend's DOM cross-check layer (backend/app/validators/dom_check.py)
+validates every VLM claim against the actual page HTML before a PR is
+generated. Elements the model names that don't exist in the DOM are
+rejected. This means an unreliable VLM does not translate into an
+unreliable pipeline — the system doesn't trust model output blindly.
+
+Vision Audit – VLM Testing
+
+Model: qwen2.5vl:7b
+Purpose: Detect UI bugs from screenshots.
+
+Required output fields:
+
+bug_found
+description
+severity_level
+confidence_score
+fix
+Test Results
+
+1. Broken UI – broken-button-clip.png
+
+Bug Found: true
+Description: Missing + icon in the last item.
+Severity: Minor
+Confidence: 0.90
+Fix: Add the missing + icon.
+
+2. Clean UI – product-page.png
+
+Bug Found: false
+
+3. Clean UI – cart-multi-item.png
+
+Bug Found: false
+
+4. Clean UI – confirmation-page.png
+
+Bug Found: false
