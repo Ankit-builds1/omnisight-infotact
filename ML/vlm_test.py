@@ -45,17 +45,26 @@ LOOK SPECIFICALLY FOR:
 - Overlapping text, misplaced grids, or misaligned containers
 
 RULES:
-1. Report a bug only if an element is visibly clipped, overflowing, or
-   broken WHEN COMPARED to similar elements on the same page. If similar
-   elements (buttons, product cards) all look the same as each other,
-   that is normal - do not report a bug.
+1. If you see ANY stretched element, empty overflowing box, or broken
+   button border, set "bug_found": true.
 2. If "bug_found" is true:
    - "severity_level" MUST be "Major" or "Critical".
    - "description" MUST name the exact element affected and describe the
      visual defect you can actually see.
-   - "fix" MUST suggest a layout fix.
+   - "fix" MUST be a JSON object (not a sentence) with this exact shape:
+     {
+       "selector": "<a plausible CSS selector for the broken element, e.g. '.buy-button' or 'button.checkout'>",
+       "css_changes": [
+         {"property": "<a real CSS property name>", "value": "<a valid CSS value>"}
+       ],
+       "explanation": "<one short sentence of why this fixes it>"
+     }
+     Only include properties that directly address the visual defect
+     (e.g. width, max-width, overflow, white-space, display, position).
+     Do not include more than 3 property changes.
 3. If no visible defects, set "bug_found": false, "severity_level": null,
-   "fix": "No fix required."
+   "description": "No visible UI bug was detected.",
+   "fix": {"selector": null, "css_changes": [], "explanation": "No fix required."}
 
 Return ONLY raw JSON matching this schema:
 {
@@ -63,9 +72,17 @@ Return ONLY raw JSON matching this schema:
   "description": "string",
   "severity_level": "Major",
   "confidence_score": 0.95,
-  "fix": "string"
-}"""
-
+  "fix": {
+    "selector": "string",
+    "css_changes": [
+      {"property": "string", "value": "string"}
+    ],
+    "explanation": "string"
+  }
+}
+When bug_found is false, "fix" MUST be:
+  {"selector": null, "css_changes": [], "explanation": "No fix required."}
+"""
 
 # -------------------------------------------------
 # Tiling Logic
@@ -155,17 +172,38 @@ def validate_result(result):
         print("   ❌ description must be a string")
         return None
 
-    if not isinstance(result["fix"], str):
-        print("   ❌ fix must be a string")
+    fix = result.get("fix")
+    if not isinstance(fix, dict):
+        print("   ❌ fix must be an object")
         return None
 
     if result["bug_found"]:
         if result["severity_level"] not in SEVERITY_RANK:
             print("   ❌ Invalid severity_level (need Critical/Major/Minor)")
             return None
+
+        if not isinstance(fix.get("selector"), str) or not fix["selector"].strip():
+            print("   ❌ fix.selector must be a non-empty string")
+            return None
+
+        changes = fix.get("css_changes")
+        if not isinstance(changes, list) or len(changes) == 0:
+            print("   ❌ fix.css_changes must be a non-empty list")
+            return None
+
+        for c in changes:
+            if not isinstance(c, dict) or "property" not in c or "value" not in c:
+                print("   ❌ each css_changes item needs 'property' and 'value'")
+                return None
+            if not isinstance(c["property"], str) or not isinstance(c["value"], str):
+                print("   ❌ property/value must be strings")
+                return None
     else:
         if result["severity_level"] is not None:
             print("   ❌ severity_level must be null when bug_found is false")
+            return None
+        if fix.get("selector") is not None or fix.get("css_changes") != []:
+            print("   ❌ fix must be null/empty when bug_found is false")
             return None
 
     try:
@@ -226,7 +264,7 @@ def merge_results(tile_results):
             "description": "No visible UI bug was detected in this screenshot.",
             "severity_level": None,
             "confidence_score": lowest["confidence_score"],
-            "fix": "No fix is required.",
+            "fix": {"selector": None, "css_changes": [], "explanation": "No fix required."},
         }
 
     worst = max(
