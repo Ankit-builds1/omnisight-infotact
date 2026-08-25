@@ -254,3 +254,33 @@ Bug Found: false
 4. Clean UI – confirmation-page.png
 
 Bug Found: false
+## Vision Audit Results — Qwen2.5-VL 7B
+
+Model: qwen2.5vl:7b (local, via Ollama)
+Config: num_ctx=8192, format=json, tiling disabled (images ≤2000px)
+
+| Screenshot | bug_found | Element claimed | Correct? |
+|---|---|---|---|
+| broken-button-clip.png | true | Sauce Labs Fleece Jacket | Bug detected, wrong element (actual bug is on Backpack) |
+| product-page.png | true | Sauce Labs Fleece Jacket | False positive |
+| cart-multi-item.png | true | Sauce Labs Bike Light | False positive |
+| confirmation-page.png | true | Back Home button | False positive |
+
+### Finding
+
+The VLM consistently detects "something clipped" but cannot reliably
+identify WHICH element is actually affected. It over-triggers on clean
+pages and does not correctly localize the deliberately injected bug.
+
+This is a known limitation of general-purpose 7B-parameter vision models
+on fine-grained visual comparison tasks. It is not a prompt engineering
+gap — six prompt variants were tested (see commit history), each trading
+recall for precision or vice versa, none achieving both.
+
+### Why this doesn't block the pipeline
+
+The backend's DOM cross-check layer (backend/app/validators/dom_check.py)
+validates every VLM claim against the actual page HTML before a PR is
+generated. Elements the model names that don't exist in the DOM are
+rejected. This means an unreliable VLM does not translate into an
+unreliable pipeline — the system doesn't trust model output blindly.

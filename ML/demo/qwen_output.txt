@@ -1,0 +1,223 @@
+THIS IS OUTPUT WHEN WE RUN USING QWEN 7B MODEL!!
+==================== Testing: ML/images/broken-button-clip.png ====================
+   Image size: 1920 x 1080
+   Tiling not needed (image is small enough)
+
+   ----- full -----
+   Raw model output:
+   {
+     "bug_found": true,
+     "description": "The 'Add to cart' button for the Sauce Labs Fleece Jacket is clipped and not fully visible.",
+     "severity_level": "Major",
+     "confidence_score": 0.95,
+     "fix": {
+       "selector": "button.add-to-cart",
+       "css_changes": [
+         {"property": "max-width", "value": "100px"},
+         {"property": "margin-right", "value": "10px"}
+       ],
+       "explanation": "Reducing the button's width and adding right margin to ensure it fits properly."
+     }
+   }
+
+   ===== MERGED RESULT =====
+
+✅ Valid JSON:
+{
+  "bug_found": true,
+  "description": "The 'Add to cart' button for the Sauce Labs Fleece Jacket is clipped and not fully visible.",
+  "severity_level": "Major",
+  "confidence_score": 0.95,
+  "fix": {
+    "selector": "button.add-to-cart",
+    "css_changes": [
+      {
+        "property": "max-width",
+        "value": "100px"
+      },
+      {
+        "property": "margin-right",
+        "value": "10px"
+      }
+    ],
+    "explanation": "Reducing the button's width and adding right margin to ensure it fits properly."
+  }
+}
+
+🔴 BUG DETECTED
+
+==================== Testing: screenshots/product-page.png ====================
+   Image size: 1920 x 1080
+   Tiling not needed (image is small enough)
+
+   ----- full -----
+   Raw model output:
+   {
+     "bug_found": true,
+     "description": "The 'Add to cart' button for the Sauce Labs Fleece Jacket is clipped and not fully visible.",
+     "severity_level": "Major",
+     "confidence_score": 0.95,
+     "fix": {
+       "selector": "button.add-to-cart",
+       "css_changes": [
+         {"property": "max-width", "value": "100px"},
+         {"property": "margin-right", "value": "10px"}
+       ],
+       "explanation": "Reducing the button's width and adding right margin to ensure it fits properly."
+     }
+   }
+
+   ===== MERGED RESULT =====
+
+✅ Valid JSON:
+{
+  "bug_found": true,
+  "description": "The 'Add to cart' button for the Sauce Labs Fleece Jacket is clipped and not fully visible.",
+  "severity_level": "Major",
+  "confidence_score": 0.95,
+  "fix": {
+    "selector": "button.add-to-cart",
+    "css_changes": [
+      {
+        "property": "max-width",
+        "value": "100px"
+      },
+      {
+        "property": "margin-right",
+        "value": "10px"
+      }
+    ],
+    "explanation": "Reducing the button's width and adding right margin to ensure it fits properly."
+  }
+}
+
+🔴 BUG DETECTED
+
+==================== Testing: screenshots/cart-multi-item.png ====================
+   Image size: 1920 x 1080
+   Tiling not needed (image is small enough)
+
+   ----- full -----
+   Raw model output:
+   {
+     "bug_found": true,
+     "description": "The 'Checkout' button has a stretched border and is not aligned properly with the other buttons.",
+     "severity_level": "Major",
+     "confidence_score": 0.95,
+     "fix": {
+       "selector": "button.checkout",
+       "css_changes": [
+         {"property": "max-width", "value": "fit-content"},
+         {"property": "margin", "value": "0 10px"}
+       ],
+       "explanation": "Adjusting the button's width and margin to ensure it fits properly and aligns with other buttons."
+     }
+   }
+
+   ===== MERGED RESULT =====
+
+✅ Valid JSON:
+{
+  "bug_found": true,
+  "description": "The 'Checkout' button has a stretched border and is not aligned properly with the other buttons.",
+  "severity_level": "Major",
+  "confidence_score": 0.95,
+  "fix": {
+    "selector": "button.checkout",
+    "css_changes": [
+      {
+        "property": "max-width",
+        "value": "fit-content"
+      },
+      {
+        "property": "margin",
+        "value": "0 10px"
+      }
+    ],
+    "explanation": "Adjusting the button's width and margin to ensure it fits properly and aligns with other buttons."
+  }
+}
+
+🔴 BUG DETECTED
+
+==================== Testing: screenshots/confirmation-page.png ====================
+   Image size: 1920 x 1080
+   Tiling not needed (image is small enough)
+
+   ----- full -----
+   Raw model output:
+   {
+     "bug_found": false,
+     "description": "No visible UI bug was detected.",
+     "severity_level": null,
+     "confidence_score": 0.95,
+     "fix": {
+       "selector": null,
+       "css_changes": [],
+       "explanation": "No fix required."
+     }
+   }
+
+   ===== MERGED RESULT =====
+
+✅ Valid JSON:
+{
+  "bug_found": false,
+  "description": "No visible UI bug was detected in this screenshot.",
+  "severity_level": null,
+  "confidence_score": 0.95,
+  "fix": {
+    "selector": null,
+    "css_changes": [],
+    "explanation": "No fix required."
+  }
+}
+
+🟢 NO BUG DETECTED
+
+==================== Testing: ML/images/manual-broken-fleece.png ====================
+   Image size: 1902 x 896
+   Tiling not needed (image is small enough)
+
+   ----- full -----
+   Raw model output:
+   {
+     "bug_found": true,
+     "description": "The 'Add to cart' button for the Sauce Labs Fleece Jacket is clipped and not fully visible.",
+     "severity_level": "Major",
+     "confidence_score": 0.95,
+     "fix": {
+       "selector": "button.add-to-cart",
+       "css_changes": [
+         {"property": "max-width", "value": "100%"},
+         {"property": "white-space", "value": "normal"}
+       ],
+       "explanation": "Ensuring the button is not clipped and has proper spacing."
+     }
+   }
+
+   ===== MERGED RESULT =====
+
+✅ Valid JSON:
+{
+  "bug_found": true,
+  "description": "The 'Add to cart' button for the Sauce Labs Fleece Jacket is clipped and not fully visible.",
+  "severity_level": "Major",
+  "confidence_score": 0.95,
+  "fix": {
+    "selector": "button.add-to-cart",
+    "css_changes": [
+      {
+        "property": "max-width",
+        "value": "100%"
+      },
+      {
+        "property": "white-space",
+        "value": "normal"
+      }
+    ],
+    "explanation": "Ensuring the button is not clipped and has proper spacing."
+  }
+}
+
+🔴 BUG DETECTED

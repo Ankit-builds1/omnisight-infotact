@@ -20,6 +20,7 @@ image_paths = [
     "screenshots/product-page.png",
     "screenshots/cart-multi-item.png",
     "screenshots/confirmation-page.png",
+    "ML/images/manual-broken-fleece.png",
 ]
 
 REQUIRED_FIELDS = [
@@ -50,7 +51,7 @@ RULES:
 2. If "bug_found" is true:
    - "severity_level" MUST be "Major" or "Critical".
    - "description" MUST name the exact element affected and describe the
-     visual defect you can actually see.
+     visual defect you can acthually see.
    - "fix" MUST be a JSON object (not a sentence) with this exact shape:
      {
        "selector": "<a plausible CSS selector for the broken element, e.g. '.buy-button' or 'button.checkout'>",

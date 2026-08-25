@@ -1,0 +1,113 @@
+THIS IS OUTPUT WHEN WE RUN USING LLAVA MODEL!!
+==================== Testing: ML/images/broken-button-clip.png ====================
+   Image size: 1920 x 1080
+   Tiling not needed (image is small enough)
+
+   ----- full -----
+   Raw model output:
+   {
+     "bug_found": false,
+     "severity_level": null,
+     "description": "No visible UI bug was detected.",
+     "fix": {
+       "selector": null,
+       "css_changes": [],
+       "explanation": "No fix required."
+     }
+   }
+   ❌ Missing fields: ['confidence_score']
+
+   ===== MERGED RESULT =====
+
+❌ No valid result from any tile
+
+==================== Testing: screenshots/product-page.png ====================
+   Image size: 1920 x 1080
+   Tiling not needed (image is small enough)
+
+   ----- full -----
+   Raw model output:
+   {
+     "bug_found": false,
+     "severity_level": null,
+     "description": "No visible UI bug was detected.",
+     "fix": {
+       "selector": null,
+       "css_changes": [],
+       "explanation": "No fix required."
+     }
+   }
+   ❌ Missing fields: ['confidence_score']
+
+   ===== MERGED RESULT =====
+
+❌ No valid result from any tile
+
+==================== Testing: screenshots/cart-multi-item.png ====================
+   Image size: 1920 x 1080
+   Tiling not needed (image is small enough)
+
+   ----- full -----
+   Raw model output:
+   {
+     "bug_found": false,
+     "description": "No visible UI bug was detected.",
+     "severity_level": null,
+     "fix": {
+       "selector": null,
+       "css_changes": [],
+       "explanation": "No fix required."
+     }
+   }
+   ❌ Missing fields: ['confidence_score']
+
+   ===== MERGED RESULT =====
+
+❌ No valid result from any tile
+
+==================== Testing: screenshots/confirmation-page.png ====================
+   Image size: 1920 x 1080
+   Tiling not needed (image is small enough)
+
+   ----- full -----
+   Raw model output:
+   {
+     "bug_found": false,
+     "severity_level": null,
+     "description": "No visible UI bug was detected.",
+     "fix": {
+       "selector": null,
+       "css_changes": [],
+       "explanation": "No fix required."
+     }
+   }
+   ❌ Missing fields: ['confidence_score']
+
+   ===== MERGED RESULT =====
+
+❌ No valid result from any tile
+
+==================== Testing: ML/images/manual-broken-fleece.png ====================
+   Image size: 1902 x 896
+   Tiling not needed (image is small enough)
+
+   ----- full -----
+   Raw model output:
+   {
+   "bug_found": true,
+   "severity_level": "Major",
+   "description": "Broken button border: The button borders are clipped and broken, creating a visual bug. The button is overflowing its container, and the button is misaligned horizontally.",
+   "fix": {
+   "selector": ".button",
+   "css_changes": [
+   {"property": "max-width", "value": "100%"},
+   {"property": "overflow", "value": "hidden"}
+   ],
+   "explanation": "Adding 'max-width: 100%' to the button will ensure it does not overflow its container, and setting 'overflow: hidden' will ensure the button borders are not visible outside its container, correcting the visual bug."
+   }
+   }
+   ❌ Missing fields: ['confidence_score']
+
+   ===== MERGED RESULT =====
+
+❌ No valid result from any tile
