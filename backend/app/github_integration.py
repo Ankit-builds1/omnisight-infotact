@@ -1,16 +1,19 @@
 """
 GitHub Integration — OmniSight Backend (Week 3)
 
-PyGithub se automatically branch banata hai, fix commit karta hai,
-aur PR open karta hai — sirf un reports ke liye jo DOM cross-check
-pass kar chuke hain (trustworthy).
+PyGithub se automatically branch banata hai, VLM ka structured fix
+real HTML content pe apply karta hai, commit karta hai, aur PR open
+karta hai — sirf un reports ke liye jo DOM cross-check pass kar
+chuke hain (trustworthy).
 """
 
 import os
+import re
 import time
 import logging
 from dotenv import load_dotenv
 from github import Github, Auth, GithubException
+from bs4 import BeautifulSoup
 
 load_dotenv()
 
@@ -132,55 +135,132 @@ def open_pull_request(
         raise
 
 
-def create_fix_pr(bug_report: dict, base_branch: str = "backend-fastapi"):
+# -------------------------------------------------
+# Week 3 Day 2 — real fix application
+# -------------------------------------------------
+def apply_fix_to_html(html_content: str, fix: dict) -> tuple[str, bool]:
     """
-    End-to-end helper: branch bano, fix commit karo, PR kholo.
+    VLM ke structured fix (selector + css_changes) ko asli HTML content
+    pe apply karta hai using BeautifulSoup.
 
-    bug_report ek dict hai (Action Engine se aata hai). Handles both:
-    - naya structured format: fix = {"selector": ..., "css_changes": [...], "explanation": ...}
-    - purana plain-string format: fix = "some text"
+    Args:
+        html_content: original HTML file ka poora content (string)
+        fix: {"selector": ".btn", "css_changes": [{"property": "max-width", "value": "100px"}, ...]}
+
+    Returns:
+        (updated_html: str, applied: bool)
+        applied=False agar selector kuch match nahi karta - us case mein
+        original content wapas milta hai, taaki galti se kuch corrupt na ho.
     """
-    branch_name = create_branch(base_branch)
+    selector = fix.get("selector")
+    css_changes = fix.get("css_changes", [])
 
+    if not selector or not css_changes:
+        logger.warning("Fix has no selector or css_changes; skipping apply.")
+        return html_content, False
+
+    soup = BeautifulSoup(html_content, "html.parser")
+
+    try:
+        elements = soup.select(selector)
+    except Exception as e:
+        logger.error(f"Invalid CSS selector '{selector}': {e}")
+        return html_content, False
+
+    if not elements:
+        logger.warning(f"Selector '{selector}' matched no elements; skipping apply.")
+        return html_content, False
+
+    for el in elements:
+        existing_style = el.get("style", "")
+        # Trailing semicolon safe rakho
+        if existing_style and not existing_style.strip().endswith(";"):
+            existing_style += ";"
+
+        new_declarations = " ".join(
+            f"{c['property']}: {c['value']};" for c in css_changes
+        )
+        el["style"] = f"{existing_style} {new_declarations}".strip()
+
+    logger.info(
+        f"Applied {len(css_changes)} CSS change(s) to "
+        f"{len(elements)} element(s) matching '{selector}'"
+    )
+    return str(soup), True
+
+
+def create_fix_pr(
+    bug_report: dict,
+    target_file: str,
+    original_html: str,
+    base_branch: str = "backend-fastapi",
+):
+    """
+    End-to-end: branch bano, VLM ka fix real HTML pe apply karo,
+    commit karo, PR kholo.
+
+    Args:
+        bug_report: Action Engine se aaya dict (VLMBugReport jaisa)
+        target_file: repo ke andar us HTML file ka path jise patch karna hai
+                     e.g. "screenshots/broken/broken-button-clip.html"
+        original_html: us file ka current content (string) - GitHub se
+                        ya local disk se pehle se fetch kiya hua
+
+    Returns:
+        PullRequest object, ya None agar fix apply nahi ho paya
+    """
     fix = bug_report.get("fix", {})
 
-    if isinstance(fix, dict):
-        css_summary = "\n".join(
-            f"  - `{c['property']}: {c['value']}`"
-            for c in fix.get("css_changes", [])
+    if not isinstance(fix, dict):
+        logger.error("Fix is not a structured dict; cannot apply automatically.")
+        return None
+
+    updated_html, applied = apply_fix_to_html(original_html, fix)
+
+    if not applied:
+        logger.error(
+            f"Could not apply fix for selector '{fix.get('selector')}'. "
+            "No PR will be created."
         )
-        fix_description = (
-            f"**Selector:** `{fix.get('selector', 'unknown')}`\n\n"
-            f"**CSS Changes:**\n{css_summary}\n\n"
-            f"**Explanation:** {fix.get('explanation', '')}"
-        )
-    else:
-        fix_description = str(fix)
+        return None
+
+    branch_name = create_branch(base_branch)
+
+    css_summary = "\n".join(
+        f"  - `{c['property']}: {c['value']}`"
+        for c in fix.get("css_changes", [])
+    )
 
     commit_message = f"fix: {bug_report.get('description', 'UI bug fix')}"
 
-    proof_content = f"""# Auto-generated fix proof
+    pr_body = f"""**Auto-generated by OmniSight**
 
 **Bug:** {bug_report.get('description')}
 **Severity:** {bug_report.get('severity_level')}
 **Confidence:** {bug_report.get('confidence_score')}
 
-## Suggested Fix
+**Selector:** `{fix.get('selector')}`
 
-{fix_description}
+**CSS Changes:**
+{css_summary}
+
+**Explanation:** {fix.get('explanation', '')}
+
+---
+*This fix was applied automatically and verified against the DOM cross-check layer before this PR was opened.*
 """
 
     commit_fix(
         branch_name=branch_name,
-        file_path=f"fixes/{branch_name}.md",
-        new_content=proof_content,
+        file_path=target_file,
+        new_content=updated_html,
         commit_message=commit_message,
     )
 
     pr = open_pull_request(
         branch_name=branch_name,
         title=f"Auto-fix: {bug_report.get('description', 'UI bug')[:60]}",
-        body=f"**Auto-generated by OmniSight**\n\n{proof_content}",
+        body=pr_body,
         base_branch=base_branch,
     )
 
@@ -191,25 +271,49 @@ def create_fix_pr(bug_report: dict, base_branch: str = "backend-fastapi"):
 # Test — python github_integration.py
 # -------------------------------------------------
 if __name__ == "__main__":
-    print("Testing full fix -> PR flow...")
+    print("Testing full fix -> PR flow with REAL HTML patching...")
 
     sample_bug = {
         "bug_found": True,
-        "description": "The 'Add to cart' button for the Sauce Labs Fleece Jacket is clipped and not fully visible.",
+        "description": "The 'Add to cart' button for the Sauce Labs Backpack is clipped and not fully visible.",
         "severity_level": "Major",
         "confidence_score": 0.95,
         "fix": {
-            "selector": "button.add-to-cart",
+            "selector": ".btn_inventory",
             "css_changes": [
-                {"property": "max-width", "value": "100px"},
-                {"property": "margin-right", "value": "10px"},
+                {"property": "max-width", "value": "150px"},
+                {"property": "white-space", "value": "normal"},
             ],
-            "explanation": "Reducing the button width and adding margin-right ensures the button is fully visible.",
+            "explanation": "Constraining the button width prevents it from overflowing the viewport.",
         },
     }
 
+    # Local file se test HTML lao
+    local_path = os.path.join(
+        os.path.dirname(__file__), "..", "..",
+        "screenshots", "broken", "broken-button-clip.html"
+    )
+
     try:
-        pr = create_fix_pr(sample_bug)
-        print(f"✅ PR opened: {pr.html_url}")
+        with open(local_path, encoding="utf-8") as f:
+            original_html = f.read()
+    except FileNotFoundError:
+        print(f"❌ Could not find test HTML at {local_path}")
+        print("   Run: git checkout origin/frontend -- screenshots/")
+        raise SystemExit(1)
+
+    try:
+        pr = create_fix_pr(
+            bug_report=sample_bug,
+            target_file="screenshots/broken/broken-button-clip.html",
+            original_html=original_html,
+            base_branch="backend-fastapi",
+        )
+
+        if pr:
+            print(f"✅ PR opened: {pr.html_url}")
+        else:
+            print("❌ Fix could not be applied — no PR created (see logs above)")
+
     except Exception as e:
         print(f"❌ Error: {e}")
