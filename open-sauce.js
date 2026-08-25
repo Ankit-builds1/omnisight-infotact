@@ -115,9 +115,21 @@ async function runCheckoutFlow(page, screenshotsDir, viewport, filenames, option
 // deliberately breaks the UI on purpose so we've got a bad screenshot to test against too -
 // pushes the first "add to cart" button way outside the desktop viewport with some junk css,
 // injected straight into the page instead of touching the actual site.
-// applyBrokenCss lets you re-run this exact same flow WITHOUT the bug, once a fix has gone in,
-// so you get a clean "after" screenshot of the same page for comparison______note: sid
-async function captureBrokenState(page, screenshotsDir, applyBrokenCss = true, filename = 'broken-button-clip.png') {
+//
+// three ways to call this:
+//   - default (applyBrokenCss: true)  -> injects our own broken css, this is the "before" bug shot
+//   - applyBrokenCss: false           -> injects nothing, just the plain default page - this is
+//                                        the reference shot, for turning the bug off manually
+//   - customCss: '...'                -> injects whatever css string you give it instead, so this
+//                                        isn't locked to just our one bug - anyone's fix/variation
+//                                        can get run through the same flow and screenshotted_____note: sid
+async function captureBrokenState(page, screenshotsDir, options = {}) {
+  const {
+    applyBrokenCss = true,
+    customCss = null,     // pass a css string here to inject that instead of the built-in bug
+    filename = 'broken-button-clip.png'
+  } = options;
+
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('https://saucedemo.com');
 
@@ -128,7 +140,11 @@ async function captureBrokenState(page, screenshotsDir, applyBrokenCss = true, f
   await page.waitForSelector('.inventory_list');
   await page.waitForLoadState('networkidle');
 
-  if (applyBrokenCss) {
+  if (customCss) {
+    // some other css was handed to us, inject that instead of our own built-in bug
+    await page.addStyleTag({ content: customCss });
+    console.log('custom css injected, grabbing screenshot');
+  } else if (applyBrokenCss) {
     // shove the button way past the right edge of the screen so it clips off entirely
     await page.addStyleTag({
       content: `
@@ -141,7 +157,8 @@ async function captureBrokenState(page, screenshotsDir, applyBrokenCss = true, f
     });
     console.log('broken state injected, grabbing screenshot');
   } else {
-    console.log('skipping the broken css this time, grabbing the after-fix screenshot');
+    // bug turned off, nothing injected - this is the plain reference shot
+    console.log('css bug turned off, grabbing the reference screenshot');
   }
 
   await captureSnapshot(page, screenshotsDir, filename);
@@ -196,10 +213,12 @@ async function rerunFlowForComparison(flowFn, ...args) {
   console.log('grabbing a broken UI screenshot on purpose');
   await captureBrokenState(page, brokenDir);
 
-  // simulate a fix going in and re-run the exact same page to confirm it now looks right -
-  // same flow, just no broken css this time, saved into after/ so it can be diffed against
-  // the broken one for a before/after comparison______note: sid
-  await rerunFlowForComparison(captureBrokenState, page, afterDir, false, 'broken-button-fixed.png');
+  // turn the bug off manually and grab the reference screenshot - this is what priya will
+  // compare her actual fix against later, not a real fix itself______note: sid
+  await rerunFlowForComparison(captureBrokenState, page, afterDir, {
+    applyBrokenCss: false,
+    filename: 'broken-button-reference.png'
+  });
 
   // mobile pass, roughly an iphone x/11 size, same flow just repeated at a smaller viewport
   console.log('switching to mobile viewport, redoing the flow for mobile screenshots');
