@@ -1,0 +1,50 @@
+[
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The 'Add to cart' button for the Sauce Labs Fleece Jacket is clipped and not fully visible.",
+    "fix_applied": {
+      "selector": "button.add-to-cart",
+      "css_changes": [
+        {
+          "property": "max-width",
+          "value": "100px"
+        },
+        {
+          "property": "margin-right",
+          "value": "10px"
+        }
+      ],
+      "explanation": "Reducing the button's width and adding right margin to ensure it fits properly."
+    },
+    "status": "NOT_FIXED",
+    "evaluation": {
+      "bug_still_present": true,
+      "confidence_score": 0.95,
+      "explanation": "The 'Add to cart' button for the Sauce Labs Fleece Jacket is still clipped and not fully visible in the AFTER screenshot."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The 'Add to cart' button for the Sauce Labs Bike Light is clipped and cut off on the right side.",
+    "fix_applied": {
+      "selector": "button.add-to-cart",
+      "css_changes": [
+        {
+          "property": "max-width",
+          "value": "100px"
+        },
+        {
+          "property": "margin-right",
+          "value": "10px"
+        }
+      ],
+      "explanation": "Reducing the button's max-width and margin-right ensures it fits within the container without being clipped."
+    },
+    "status": "NOT_FIXED",
+    "evaluation": {
+      "bug_still_present": true,
+      "confidence_score": 0.9,
+      "explanation": "The 'Add to cart' button is still clipped and cut off on the right side in the AFTER screenshot, indicating that the original bug has not been fixed."
+    }
+  }
+]
