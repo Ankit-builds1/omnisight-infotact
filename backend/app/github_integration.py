@@ -8,7 +8,6 @@ chuke hain (trustworthy).
 """
 
 import os
-import re
 import time
 import logging
 from dotenv import load_dotenv
@@ -268,27 +267,122 @@ def create_fix_pr(
 
 
 # -------------------------------------------------
+# Week 3 Day 3 — wiring self-healing loop result into create_fix_pr()
+# -------------------------------------------------
+def create_fix_pr_from_self_healing(
+    self_healing_result: dict,
+    target_file: str,
+    original_html: str,
+    base_branch: str = "backend-fastapi",
+):
+    """
+    Priya ke self_healing_log.json entry ko lekar PR banata hai —
+    LEKIN sirf tab jab status == "FIXED" ho. NOT_FIXED / NO_SELECTOR
+    case mein PR skip ho jayega, taaki galat/unverified fix GitHub
+    par na jaaye.
+
+    Expected self_healing_result shape (Priya ke log_self_healing_result se):
+    {
+        "html_path": "...",
+        "original_bug": "description string",
+        "fix_applied": {"selector": ..., "css_changes": [...], "explanation": ...},
+        "status": "FIXED" | "NOT_FIXED" | "NO_SELECTOR",
+        "evaluation": {"bug_still_present": bool, "confidence_score": float, "explanation": str}
+    }
+
+    Returns:
+        PullRequest object, ya None agar status FIXED nahi tha ya fix apply nahi hua
+    """
+    status = self_healing_result.get("status")
+
+    if status != "FIXED":
+        logger.warning(
+            f"Self-healing status is '{status}', not FIXED. "
+            "Skipping PR creation — no unverified fix will be pushed."
+        )
+        return None
+
+    fix = self_healing_result.get("fix_applied")
+    if not fix:
+        logger.error("Status is FIXED but fix_applied is missing. Skipping PR.")
+        return None
+
+    evaluation = self_healing_result.get("evaluation", {})
+
+    # self-healing log ke fields ko create_fix_pr() ke expected bug_report
+    # shape mein map karte hain
+    bug_report = {
+        "bug_found": True,
+        "description": self_healing_result.get("original_bug", "UI bug fix"),
+        "severity_level": "Major",  # self-healing log severity nahi rakhta abhi, default
+        "confidence_score": evaluation.get("confidence_score", "N/A"),
+        "fix": fix,
+    }
+
+    pr = create_fix_pr(
+        bug_report=bug_report,
+        target_file=target_file,
+        original_html=original_html,
+        base_branch=base_branch,
+    )
+
+    if pr:
+        logger.info(f"Self-healing verified fix pushed as PR: {pr.html_url}")
+    else:
+        logger.error("create_fix_pr() returned None even though status was FIXED.")
+
+    return pr
+
+
+# -------------------------------------------------
 # Test — python github_integration.py
 # -------------------------------------------------
 if __name__ == "__main__":
-    print("Testing full fix -> PR flow with REAL HTML patching...")
+    print("Testing self-healing -> PR flow with today's REAL FIXED result (real saucedemo HTML)...")
 
-    sample_bug = {
-        "bug_found": True,
-        "description": "The 'Add to cart' button for the Sauce Labs Backpack is clipped and not fully visible.",
-        "severity_level": "Major",
-        "confidence_score": 0.95,
-        "fix": {
-            "selector": ".btn_inventory",
+    # Priya ka aaj ka final, verified self-healing result — real saucedemo.com
+    # HTML par test hua (backpack ke jagah bike-light ban gaya, nth-child(2))
+    todays_self_healing_result = {
+        "html_path": "screenshots/broken/broken-button-clip.html",
+        "original_bug": "The 'Add to cart' button for the Sauce Labs Bike Light is clipped and cut off.",
+        "fix_applied": {
+            "selector": "#page_wrapper .inventory_item:nth-child(2) .btn_inventory",
             "css_changes": [
-                {"property": "max-width", "value": "150px"},
-                {"property": "white-space", "value": "normal"},
+                {"property": "width", "value": "auto"},
+                {"property": "max-width", "value": "none"},
+                {"property": "overflow", "value": "visible"},
             ],
-            "explanation": "Constraining the button width prevents it from overflowing the viewport.",
+            "explanation": "Relaxing the button's width and max-width properties allows it to fully display.",
+        },
+        "status": "FIXED",
+        "evaluation": {
+            "bug_still_present": False,
+            "confidence_score": 0.95,
+            "explanation": (
+                "The button text and border are fully visible and readable "
+                "without any parts cut off or hidden."
+            ),
         },
     }
 
-    # Local file se test HTML lao
+    # Ek NOT_FIXED example bhi rakha hai taaki skip-logic bhi test ho sake.
+    not_fixed_example = {
+        "html_path": "screenshots/broken/broken-button-clip.html",
+        "original_bug": "The 'Add to cart' button is clipped and cut off.",
+        "fix_applied": {
+            "selector": "#page_wrapper .inventory_item:nth-child(2) .btn_inventory",
+            "css_changes": [{"property": "max-width", "value": "100px"}],
+            "explanation": "Reducing width.",
+        },
+        "status": "NOT_FIXED",
+        "evaluation": {
+            "bug_still_present": True,
+            "confidence_score": 0.9,
+            "explanation": "Button is still clipped in the after screenshot.",
+        },
+    }
+
+    # Local file se test HTML lao (ab yeh Sid ki real saucedemo HTML honi chahiye)
     local_path = os.path.join(
         os.path.dirname(__file__), "..", "..",
         "screenshots", "broken", "broken-button-clip.html"
@@ -303,8 +397,10 @@ if __name__ == "__main__":
         raise SystemExit(1)
 
     try:
-        pr = create_fix_pr(
-            bug_report=sample_bug,
+        # ---- Test 1: FIXED case (should create a real PR) ----
+        print("\n--- Test 1: FIXED status (real saucedemo selector) ---")
+        pr = create_fix_pr_from_self_healing(
+            self_healing_result=todays_self_healing_result,
             target_file="screenshots/broken/broken-button-clip.html",
             original_html=original_html,
             base_branch="backend-fastapi",
@@ -314,6 +410,16 @@ if __name__ == "__main__":
             print(f"✅ PR opened: {pr.html_url}")
         else:
             print("❌ Fix could not be applied — no PR created (see logs above)")
+
+        # ---- Test 2: NOT_FIXED case (should skip, no PR) ----
+        print("\n--- Test 2: NOT_FIXED status (should skip) ---")
+        pr2 = create_fix_pr_from_self_healing(
+            self_healing_result=not_fixed_example,
+            target_file="screenshots/broken/broken-button-clip.html",
+            original_html=original_html,
+            base_branch="backend-fastapi",
+        )
+        print("✅ Correctly skipped PR creation" if pr2 is None else "❌ Should have skipped but didn't!")
 
     except Exception as e:
         print(f"❌ Error: {e}")
