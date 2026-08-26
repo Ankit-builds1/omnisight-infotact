@@ -218,5 +218,33 @@
       "confidence_score": 0.95,
       "explanation": "The button text 'Add to cart - Buy Now' is fully visible and readable, with no part of the text cut off or hidden. The button's border forms a full rectangle with no clipping by the edge of another box."
     }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The 'Add to cart' button for the Sauce Labs Bike Light is clipped and cut off.",
+    "fix_applied": {
+      "selector": "#page_wrapper .inventory_item:nth-child(2) .btn_inventory",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the button's width and max-width properties allows it to fully display."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button text and border are fully visible and readable without any parts cut off or hidden."
+    }
   }
 ]
