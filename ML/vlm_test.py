@@ -24,9 +24,9 @@ LOG_PATH = "ML/self_healing_log.json"
 
 image_paths = [
     "ML/images/broken-button-clip.png",
-    "screenshots/product-page.png",
-    "screenshots/cart-multi-item.png",
-    "screenshots/confirmation-page.png",
+   # "screenshots/product-page.png",
+   # "screenshots/cart-multi-item.png",
+   # "screenshots/confirmation-page.png",
 ]
 
 # Map each screenshot to its source HTML.
@@ -102,12 +102,31 @@ RULES:
    - Prefer the element's id, written as "#the-id".
    - If it has no id, use its exact class exactly as spelled in the HTML.
    - Do NOT invent, guess, abbreviate, or translate selectors.
+       - If the class you want to use appears on MORE THAN ONE element in the HTML
+     (e.g. the same class repeated across multiple product cards or list items),
+     a bare class selector is NOT allowed because it is not unique.
+     In that case, combine it with a positional pseudo-class
+     (":first-child", ":nth-child(n)") on the closest matching parent container
+     so the selector points to exactly ONE element.
+     This is only a STRUCTURE to follow (parent-selector + positional pseudo-class
+     + child-selector) — you must build it using the ACTUAL class names and
+     ACTUAL structure found in the HTML block above, never copy any class name
+     from these instructions.
+     
+   - If the class in the HTML above is NOT repeated (appears on only one
+     element), just use that class directly — do NOT add a positional
+     pseudo-class when it is not needed.
    - If the HTML is not available, or you cannot find the element in it,
      set "selector" to null and "css_changes" to [].
 4. The fix must REDUCE the defect. If an element is clipped or cut off,
    do not shrink it. Only include properties that directly address the
    defect (width, max-width, overflow, white-space, display, position).
    Maximum 3 property changes.
+         If clipped/cut off: do NOT shrink it, RELAX it instead. For a clipped
+   button always include all three: width:auto, max-width:none,
+   overflow:visible. Only shrink width/max-width when the element is too
+   LARGE and overlapping other elements (opposite case).
+  
 5. If no visible defects: "bug_found": false, "severity_level": null,
    "description": "No visible UI bug was detected.",
    "fix": {{"selector": null, "css_changes": [], "explanation": "No fix required."}}
@@ -172,7 +191,7 @@ def run_vlm(img_path, page_html):
     response = ollama.chat(
         model=MODEL,
         format="json",
-        options={"num_ctx": 8192},
+        options={"num_ctx": 16384},
         messages=[
             {
                 "role": "user",
@@ -331,35 +350,43 @@ def screenshot_html(html_path, screenshot_path):
 # -------------------------------------------------
 # Evaluation of After-Fix Screenshot
 # -------------------------------------------------
+
 def evaluate_fixed_screenshot(image_path, original_bug):
-    eval_prompt = f"""You are a QA Visual Auditor checking whether a UI bug was fixed.
+    eval_prompt = """You are a QA Visual Auditor. Look ONLY at the screenshot
+below - ignore any prior description or label, and judge fresh from what
+you can actually see right now in the image.
 
-The original UI bug was:
+Independently inspect the button in this screenshot and answer: is any
+letter or word of its text cut off, hidden, or unreadable? Is any part of
+its border missing or clipped by the edge of another box?
 
-{original_bug}
+If you can read every word of the button's text completely, and its
+border forms a full rectangle with nothing sliced off - the answer is
+that there is NO bug, regardless of what any earlier note claimed.
 
-Now examine the AFTER screenshot and decide whether this ORIGINAL bug
-is still visible.
+Do not assume a bug is present just because you were told one existed
+before. Verify it yourself from the pixels you see now.
 
-Set "bug_still_present" to false ONLY if the original visual bug has
-actually been fixed. Set it to true if it is still visible.
+Set "bug_still_present" to false if the full button and its full text are
+visible and readable. Set it to true only if something is still visibly
+cut off or hidden RIGHT NOW in this image.
 
 "confidence_score" must reflect how clearly you can tell. Use a value
 between 0.0 and 1.0. Do not always return the same number.
 
 Return ONLY raw JSON. No markdown, no backticks, no commentary.
 Schema (types only - do not copy these placeholder values):
-{{
+{
   "bug_still_present": <boolean>,
   "confidence_score": <number between 0.0 and 1.0>,
   "explanation": "<string>"
-}}
+}
 """
 
     response = ollama.chat(
         model=MODEL,
         format="json",
-        options={"num_ctx": 8192},
+        options={"num_ctx": 16384},
         messages=[
             {
                 "role": "user",
@@ -372,8 +399,6 @@ Schema (types only - do not copy these placeholder values):
     raw = response["message"]["content"]
     cleaned = clean_json_text(raw)
     return json.loads(cleaned)
-
-
 # -------------------------------------------------
 # Logging
 # -------------------------------------------------

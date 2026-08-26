@@ -46,5 +46,177 @@
       "confidence_score": 0.9,
       "explanation": "The 'Add to cart' button is still clipped and cut off on the right side in the AFTER screenshot, indicating that the original bug has not been fixed."
     }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The 'Add to cart' button for the Sauce Labs Backpack is clipped and cut off on the right side.",
+    "fix_applied": {
+      "selector": "button.add-to-cart",
+      "css_changes": [
+        {
+          "property": "max-width",
+          "value": "auto"
+        }
+      ],
+      "explanation": "Relaxing the max-width property allows the button to return to its natural size and prevent clipping."
+    },
+    "status": "NOT_FIXED",
+    "evaluation": {
+      "bug_still_present": true,
+      "confidence_score": 0.9,
+      "explanation": "The 'Add to cart' button is still clipped and cut off on the right side in the AFTER screenshot."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The 'Add to cart' button for the Sauce Labs Bike Light is clipped and cut off on the right side.",
+    "fix_applied": {
+      "selector": "button.add-to-cart",
+      "css_changes": [
+        {
+          "property": "max-width",
+          "value": "none"
+        }
+      ],
+      "explanation": "Relaxing the max-width property allows the button to expand and fit within its container."
+    },
+    "status": "NOT_FIXED",
+    "evaluation": {
+      "bug_still_present": true,
+      "confidence_score": 0.9,
+      "explanation": "The 'Add to cart' button is still clipped and cut off on the right side in the AFTER screenshot, indicating that the original bug has not been fixed."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The 'Add to cart' button for the Sauce Labs Bike Light is clipped and cut off on the right side.",
+    "fix_applied": {
+      "selector": "button.add-to-cart",
+      "css_changes": [
+        {
+          "property": "max-width",
+          "value": "none"
+        }
+      ],
+      "explanation": "Relaxing the max-width constraint allows the button to expand and fit within its container."
+    },
+    "status": "NOT_FIXED",
+    "evaluation": {
+      "bug_still_present": true,
+      "confidence_score": 0.9,
+      "explanation": "The 'Add to cart' button is still clipped and cut off on the right side in the AFTER screenshot, indicating that the original bug has not been fixed."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The 'Add to cart' button for the Sauce Labs Bike Light is clipped and cut off.",
+    "fix_applied": {
+      "selector": "button.add-to-cart",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the button's width and max-width properties allows it to fully display."
+    },
+    "status": "NOT_FIXED",
+    "evaluation": {
+      "bug_still_present": true,
+      "confidence_score": 0.9,
+      "explanation": "The 'Add to cart' button is still clipped and cut off in the AFTER screenshot, indicating that the original bug has not been fixed."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The 'Add to cart' button for the Sauce Labs Bike Light is clipped and cut off.",
+    "fix_applied": {
+      "selector": "button.add-to-cart",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the button's width and max-width properties allows it to fully display."
+    },
+    "status": "NOT_FIXED",
+    "evaluation": {
+      "bug_still_present": true,
+      "confidence_score": 0.9,
+      "explanation": "The 'Add to cart' button is still clipped and cut off in the AFTER screenshot, indicating that the original bug has not been fixed."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The 'Add to cart' button for the Sauce Labs Bike Light is clipped and cut off.",
+    "fix_applied": {
+      "selector": "button.add-to-cart",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the button's width and max-width properties allows it to fully display."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button text 'Add to cart - Buy Now' is fully visible and readable, with no part of the text cut off or hidden. The button's border forms a full rectangle with no clipping by the edge of another box."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The 'Add to cart' button for the Sauce Labs Bike Light is clipped and cut off.",
+    "fix_applied": {
+      "selector": "button.add-to-cart",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the button's width and max-width properties allows it to fully display."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button text 'Add to cart - Buy Now' is fully visible and readable, with no part of the text cut off or hidden. The button's border forms a full rectangle with no clipping by the edge of another box."
+    }
   }
 ]
