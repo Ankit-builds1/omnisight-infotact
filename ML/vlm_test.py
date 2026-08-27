@@ -2,6 +2,9 @@ import os
 import json
 import re
 import tempfile
+import http.server
+import socketserver
+import threading
 
 import ollama
 from PIL import Image
@@ -29,9 +32,6 @@ image_paths = [
    # "screenshots/confirmation-page.png",
 ]
 
-# Map each screenshot to its source HTML.
-# Screenshots without an entry here get an empty HTML block,
-# and the model is told to return selector=null instead of guessing.
 HTML_FOR_IMAGE = {
     "ML/images/broken-button-clip.png": "screenshots/broken/broken-button-clip.html",
 }
@@ -184,8 +184,6 @@ def make_tiles(img_path, temp_dir):
 
 # -------------------------------------------------
 # Ollama Runner
-# num_ctx=8192 required - default 4096 caused image tokens
-# to overflow, making the model respond without seeing the image
 # -------------------------------------------------
 def run_vlm(img_path, page_html):
     response = ollama.chat(
@@ -248,8 +246,6 @@ def validate_result(result):
         selector = fix.get("selector")
         changes = fix.get("css_changes")
 
-        # selector=null is now a legitimate answer: the model could not
-        # find the element in the HTML. Bug is still reported, no fix.
         if selector is None:
             if changes not in ([], None):
                 print("   ❌ css_changes must be empty when selector is null")
@@ -330,19 +326,40 @@ def apply_css_fix(html_path, fix):
 
 
 # -------------------------------------------------
-# Screenshot HTML
+# Screenshot HTML (DIAGNOSTIC VERSION — headless=False,
+# console/error/failed-request logging enabled)
 # -------------------------------------------------
 def screenshot_html(html_path, screenshot_path):
     html_path = Path(html_path).resolve()
     screenshot_path = Path(screenshot_path).resolve()
     screenshot_path.parent.mkdir(parents=True, exist_ok=True)
+    serve_dir = html_path.parent
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page(viewport={"width": 1920, "height": 1080})
-        page.goto(html_path.as_uri())
-        page.screenshot(path=str(screenshot_path), full_page=True)
-        browser.close()
+    class QuietHandler(http.server.SimpleHTTPRequestHandler):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, directory=str(serve_dir), **kwargs)
+
+    httpd = socketserver.TCPServer(("localhost", 0), QuietHandler)
+    port = httpd.server_address[1]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=False)
+            page = browser.new_page(viewport={"width": 1920, "height": 1080})
+
+            page.on("console", lambda msg: print(f"   CONSOLE: {msg.text}"))
+            page.on("pageerror", lambda err: print(f"   PAGE ERROR: {err}"))
+            page.on("requestfailed", lambda req: print(f"   REQUEST FAILED: {req.url} - {req.failure}"))
+
+            page.goto(f"http://localhost:{port}/{html_path.name}")
+            page.wait_for_timeout(5000)
+            page.screenshot(path=str(screenshot_path), full_page=False)
+            browser.close()
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
 
     print(f"   ✅ Screenshot saved: {screenshot_path}")
 
@@ -350,7 +367,6 @@ def screenshot_html(html_path, screenshot_path):
 # -------------------------------------------------
 # Evaluation of After-Fix Screenshot
 # -------------------------------------------------
-
 def evaluate_fixed_screenshot(image_path, original_bug):
     eval_prompt = """You are a QA Visual Auditor. Look ONLY at the screenshot
 below - ignore any prior description or label, and judge fresh from what
@@ -399,6 +415,8 @@ Schema (types only - do not copy these placeholder values):
     raw = response["message"]["content"]
     cleaned = clean_json_text(raw)
     return json.loads(cleaned)
+
+
 # -------------------------------------------------
 # Logging
 # -------------------------------------------------
@@ -463,7 +481,6 @@ def merge_results(tile_results):
             "fix": {"selector": None, "css_changes": [], "explanation": "No fix required."},
         }
 
-    # Prefer bugs that actually have a usable selector
     actionable = [b for b in bugs if b["fix"].get("selector")]
     pool = actionable if actionable else bugs
 
@@ -500,9 +517,14 @@ def audit_image(img):
 # -------------------------------------------------
 if __name__ == "__main__":
 
-    # ---------------------------------------------
-    # Normal Vision Audit Testing
-    # ---------------------------------------------
+    bug_screenshot = "ML/images/broken-button-clip.png"
+
+    if os.path.exists(HTML_PATH):
+        print(f"Refreshing {bug_screenshot} from current {HTML_PATH} ...")
+        screenshot_html(HTML_PATH, bug_screenshot)
+    else:
+        print(f"⚠️  {HTML_PATH} not found — skipping screenshot refresh")
+
     for img in image_paths:
 
         if not os.path.exists(img):
@@ -531,18 +553,12 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"\n❌ Error: {e}")
 
-    # ---------------------------------------------
-    # Day 2: Self-Healing Loop
-    # ---------------------------------------------
     print("\n\n==================== SELF-HEALING LOOP ====================")
-
-    bug_screenshot = "ML/images/broken-button-clip.png"
 
     if not os.path.exists(bug_screenshot):
         print(f"⚠️ Skipping self-healing: {bug_screenshot} not found")
 
     else:
-        # Step 1: Detect original bug
         detection = audit_image(bug_screenshot)
 
         if detection is None or not detection["bug_found"]:
@@ -566,14 +582,11 @@ if __name__ == "__main__":
             print(json.dumps(fix, indent=2))
 
             try:
-                # Step 2: Apply CSS fix
                 apply_css_fix(HTML_PATH, fix)
 
-                # Step 3: Take after screenshot
                 print("\n2. Taking after-fix screenshot...")
                 screenshot_html(HTML_PATH, AFTER_SCREENSHOT_PATH)
 
-                # Step 4: Evaluate after screenshot
                 print("\n3. Evaluating fixed screenshot...")
                 evaluation = evaluate_fixed_screenshot(
                     AFTER_SCREENSHOT_PATH,
@@ -581,10 +594,8 @@ if __name__ == "__main__":
                 )
                 print(json.dumps(evaluation, indent=2))
 
-                # Step 5: Determine status
                 status = "NOT_FIXED" if evaluation.get("bug_still_present") else "FIXED"
 
-                # Step 6: Log result
                 log_self_healing_result({
                     "html_path": HTML_PATH,
                     "original_bug": detection["description"],
@@ -593,7 +604,6 @@ if __name__ == "__main__":
                     "evaluation": evaluation,
                 })
 
-                # Step 7: Print final result
                 print("\n==============================")
                 print(f"SELF-HEALING RESULT: {status}")
                 print("==============================")

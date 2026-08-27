@@ -246,5 +246,285 @@
       "confidence_score": 0.95,
       "explanation": "The button text and border are fully visible and readable without any parts cut off or hidden."
     }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The 'Add to cart' button for the Sauce Labs Bike Light is clipped and cut off.",
+    "fix_applied": {
+      "selector": "#page_wrapper .inventory_item:nth-child(2) .btn_inventory",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the button's width and max-width properties allows it to fully display."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button text and border are fully visible and readable without any parts cut off or hidden."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The button with id 'react-burger-menu-btn' is stretched horizontally and clipped on the right side.",
+    "fix_applied": {
+      "selector": "#react-burger-menu-btn",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will allow the button to expand and display fully."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button text and border are fully visible and readable without any parts cut off or hidden."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The button with id 'react-burger-menu-btn' is stretched horizontally and clipped on the right side.",
+    "fix_applied": {
+      "selector": "#react-burger-menu-btn",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will allow the button to display fully without being clipped."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button's text is not visible, and the image appears to be missing the button's content. The button's border is fully visible, but the text is not readable."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The button with id 'react-burger-menu-btn' is stretched horizontally and clipped on the right side.",
+    "fix_applied": {
+      "selector": "#react-burger-menu-btn",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will allow the button to display fully without being clipped."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button's text is not visible, and the image appears to be missing the button's content. The button's border is fully visible, but the text is not readable."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The button with id 'react-burger-menu-btn' is stretched horizontally and clipped on the right side.",
+    "fix_applied": {
+      "selector": "#react-burger-menu-btn",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will allow the button to display fully without being clipped."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button's text is not visible, and the image appears to be missing the button's content. The button's border is fully visible, but the text is not readable."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The button borders are clipped and cut off, making it difficult to see the full button.",
+    "fix_applied": {
+      "selector": "#react-burger-menu-btn",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will allow the button to display fully."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button's text is not visible, and the image appears to be missing the button's content. The button's border is fully visible, but the text is not readable."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The button with id 'react-burger-menu-btn' is stretched horizontally and clipped on the right side.",
+    "fix_applied": {
+      "selector": "#react-burger-menu-btn",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will allow the button to display fully without being clipped."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button text and border are fully visible and readable without any parts cut off or hidden."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The button with id 'react-burger-menu-btn' is stretched horizontally and clipped on the right side.",
+    "fix_applied": {
+      "selector": "#react-burger-menu-btn",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will allow the button to display fully without being clipped."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button's text is not visible, and the image appears to be missing the button's content. The button's border is fully visible, but the text is not readable."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The button borders are clipped and not fully visible.",
+    "fix_applied": {
+      "selector": "#react-burger-menu-btn",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will ensure the button borders are fully visible."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button's text is not visible, and the image appears to be missing the button's content. The button's border is fully visible, but the text is not readable."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The button with the id 'react-burger-menu-btn' is stretched horizontally and clipped on the right side.",
+    "fix_applied": {
+      "selector": "#react-burger-menu-btn",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will allow the button to display fully without being clipped."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button text is not visible, indicating that the text is cut off or hidden. The border of the button appears to be clipped by the edge of another box, suggesting a layout or design issue."
+    }
   }
 ]
