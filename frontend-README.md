@@ -69,3 +69,9 @@ A few small `waitForTimeout()` calls are sprinkled in purely so the browser run 
 - A ~1.5s pause on the order overview page before clicking Finish, so it doesn't flash by
 - A 2s pause before the browser auto-closes at the end
 
+
+
+
+
+
+- Still working on fetching the related CSS, JS and other assets of the captured screenshots to help the VLM give proper and correct output/fix..
