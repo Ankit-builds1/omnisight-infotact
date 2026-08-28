@@ -37,11 +37,6 @@ def get_repo():
 
 
 def create_branch(base_branch: str = "backend-fastapi") -> str:
-    """
-    Naya branch banao naming pattern: fix/bug-{timestamp}
-
-    Returns: naye branch ka naam
-    """
     repo = get_repo()
 
     timestamp = int(time.time())
@@ -65,17 +60,6 @@ def create_branch(base_branch: str = "backend-fastapi") -> str:
 
 
 def commit_fix(branch_name: str, file_path: str, new_content: str, commit_message: str):
-    """
-    Ek file ko diye gaye branch pe update/create karo.
-
-    Args:
-        branch_name: jis branch pe commit karna hai (create_branch se aaya)
-        file_path: repo ke andar file ka path
-        new_content: poori file ka naya content (string)
-        commit_message: commit ka message
-
-    Returns: commit object
-    """
     repo = get_repo()
 
     try:
@@ -111,11 +95,6 @@ def open_pull_request(
     body: str,
     base_branch: str = "backend-fastapi",
 ):
-    """
-    branch_name se base_branch mein PR kholo.
-
-    Returns: PullRequest object
-    """
     repo = get_repo()
 
     try:
@@ -134,23 +113,7 @@ def open_pull_request(
         raise
 
 
-# -------------------------------------------------
-# Week 3 Day 2 — real fix application
-# -------------------------------------------------
 def apply_fix_to_html(html_content: str, fix: dict) -> tuple[str, bool]:
-    """
-    VLM ke structured fix (selector + css_changes) ko asli HTML content
-    pe apply karta hai using BeautifulSoup.
-
-    Args:
-        html_content: original HTML file ka poora content (string)
-        fix: {"selector": ".btn", "css_changes": [{"property": "max-width", "value": "100px"}, ...]}
-
-    Returns:
-        (updated_html: str, applied: bool)
-        applied=False agar selector kuch match nahi karta - us case mein
-        original content wapas milta hai, taaki galti se kuch corrupt na ho.
-    """
     selector = fix.get("selector")
     css_changes = fix.get("css_changes", [])
 
@@ -172,7 +135,6 @@ def apply_fix_to_html(html_content: str, fix: dict) -> tuple[str, bool]:
 
     for el in elements:
         existing_style = el.get("style", "")
-        # Trailing semicolon safe rakho
         if existing_style and not existing_style.strip().endswith(";"):
             existing_style += ";"
 
@@ -194,20 +156,6 @@ def create_fix_pr(
     original_html: str,
     base_branch: str = "backend-fastapi",
 ):
-    """
-    End-to-end: branch bano, VLM ka fix real HTML pe apply karo,
-    commit karo, PR kholo.
-
-    Args:
-        bug_report: Action Engine se aaya dict (VLMBugReport jaisa)
-        target_file: repo ke andar us HTML file ka path jise patch karna hai
-                     e.g. "screenshots/broken/broken-button-clip.html"
-        original_html: us file ka current content (string) - GitHub se
-                        ya local disk se pehle se fetch kiya hua
-
-    Returns:
-        PullRequest object, ya None agar fix apply nahi ho paya
-    """
     fix = bug_report.get("fix", {})
 
     if not isinstance(fix, dict):
@@ -266,33 +214,12 @@ def create_fix_pr(
     return pr
 
 
-# -------------------------------------------------
-# Week 3 Day 3 — wiring self-healing loop result into create_fix_pr()
-# -------------------------------------------------
 def create_fix_pr_from_self_healing(
     self_healing_result: dict,
     target_file: str,
     original_html: str,
     base_branch: str = "backend-fastapi",
 ):
-    """
-    Priya ke self_healing_log.json entry ko lekar PR banata hai —
-    LEKIN sirf tab jab status == "FIXED" ho. NOT_FIXED / NO_SELECTOR
-    case mein PR skip ho jayega, taaki galat/unverified fix GitHub
-    par na jaaye.
-
-    Expected self_healing_result shape (Priya ke log_self_healing_result se):
-    {
-        "html_path": "...",
-        "original_bug": "description string",
-        "fix_applied": {"selector": ..., "css_changes": [...], "explanation": ...},
-        "status": "FIXED" | "NOT_FIXED" | "NO_SELECTOR",
-        "evaluation": {"bug_still_present": bool, "confidence_score": float, "explanation": str}
-    }
-
-    Returns:
-        PullRequest object, ya None agar status FIXED nahi tha ya fix apply nahi hua
-    """
     status = self_healing_result.get("status")
 
     if status != "FIXED":
@@ -309,12 +236,10 @@ def create_fix_pr_from_self_healing(
 
     evaluation = self_healing_result.get("evaluation", {})
 
-    # self-healing log ke fields ko create_fix_pr() ke expected bug_report
-    # shape mein map karte hain
     bug_report = {
         "bug_found": True,
         "description": self_healing_result.get("original_bug", "UI bug fix"),
-        "severity_level": "Major",  # self-healing log severity nahi rakhta abhi, default
+        "severity_level": "Major",
         "confidence_score": evaluation.get("confidence_score", "N/A"),
         "fix": fix,
     }
@@ -334,43 +259,39 @@ def create_fix_pr_from_self_healing(
     return pr
 
 
-# -------------------------------------------------
-# Test — python github_integration.py
-# -------------------------------------------------
 if __name__ == "__main__":
     print("Testing self-healing -> PR flow with today's REAL FIXED result (real saucedemo HTML)...")
 
-    # Priya ka aaj ka final, verified self-healing result — real saucedemo.com
-    # HTML par test hua (backpack ke jagah bike-light ban gaya, nth-child(2))
+    # Priya ka final, 3-baar-consistent-verified self-healing result -
+    # real saucedemo HTML par, sahi element (Sauce Labs Backpack, first-child)
     todays_self_healing_result = {
         "html_path": "screenshots/broken/broken-button-clip.html",
-        "original_bug": "The 'Add to cart' button for the Sauce Labs Bike Light is clipped and cut off.",
+        "original_bug": "The button in the first product card (Sauce Labs Backpack) is clipped and cut off.",
         "fix_applied": {
-            "selector": "#page_wrapper .inventory_item:nth-child(2) .btn_inventory",
+            "selector": "#page_wrapper .inventory_item:first-child .btn_inventory",
             "css_changes": [
                 {"property": "width", "value": "auto"},
                 {"property": "max-width", "value": "none"},
                 {"property": "overflow", "value": "visible"},
             ],
-            "explanation": "Relaxing the button's width and max-width properties allows it to fully display.",
+            "explanation": "Relaxing the width and max-width properties and setting overflow to visible will allow the button to be fully visible.",
         },
         "status": "FIXED",
         "evaluation": {
             "bug_still_present": False,
             "confidence_score": 0.95,
             "explanation": (
-                "The button text and border are fully visible and readable "
+                "The button's text and border are fully visible and readable "
                 "without any parts cut off or hidden."
             ),
         },
     }
 
-    # Ek NOT_FIXED example bhi rakha hai taaki skip-logic bhi test ho sake.
     not_fixed_example = {
         "html_path": "screenshots/broken/broken-button-clip.html",
-        "original_bug": "The 'Add to cart' button is clipped and cut off.",
+        "original_bug": "The button in the first product card is clipped and cut off.",
         "fix_applied": {
-            "selector": "#page_wrapper .inventory_item:nth-child(2) .btn_inventory",
+            "selector": "#page_wrapper .inventory_item:first-child .btn_inventory",
             "css_changes": [{"property": "max-width", "value": "100px"}],
             "explanation": "Reducing width.",
         },
@@ -382,7 +303,6 @@ if __name__ == "__main__":
         },
     }
 
-    # Local file se test HTML lao (ab yeh Sid ki real saucedemo HTML honi chahiye)
     local_path = os.path.join(
         os.path.dirname(__file__), "..", "..",
         "screenshots", "broken", "broken-button-clip.html"
@@ -397,8 +317,7 @@ if __name__ == "__main__":
         raise SystemExit(1)
 
     try:
-        # ---- Test 1: FIXED case (should create a real PR) ----
-        print("\n--- Test 1: FIXED status (real saucedemo selector) ---")
+        print("\n--- Test 1: FIXED status (correct Backpack selector) ---")
         pr = create_fix_pr_from_self_healing(
             self_healing_result=todays_self_healing_result,
             target_file="screenshots/broken/broken-button-clip.html",
@@ -411,7 +330,6 @@ if __name__ == "__main__":
         else:
             print("❌ Fix could not be applied — no PR created (see logs above)")
 
-        # ---- Test 2: NOT_FIXED case (should skip, no PR) ----
         print("\n--- Test 2: NOT_FIXED status (should skip) ---")
         pr2 = create_fix_pr_from_self_healing(
             self_healing_result=not_fixed_example,
