@@ -2,6 +2,39 @@ const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
 
+// tracks which folder the next batch of asset responses should get saved into - gets pointed
+// at a different output dir each time a flow starts a fresh page.goto() against a new screenshotsDir.
+// also holds onto every write promise so we can wait for them all before the browser closes______note: sid
+let currentOutputDir = null;
+const pendingAssetWrites = [];
+
+// response listener lagao - before page.goto() in every flow this hooks in and saves every
+// /assets/ response straight to disk, same relative path structure the html already references
+// (eg /assets/index-XyuNVFOR.js), so the saved html doesn't need any rewriting - the assets/
+// folder just needs to sit next to it and everything resolves correctly______note: sid
+function setupAssetCapture(page) {
+  page.on('response', (response) => {
+    const url = response.url();
+    if (!url.includes('/assets/')) return;
+    if (!currentOutputDir) return;
+
+    const writePromise = (async () => {
+      try {
+        const urlPath = new URL(url).pathname; // e.g. /assets/index-XyuNVFOR.js
+        const savePath = path.join(currentOutputDir, urlPath);
+
+        await fs.promises.mkdir(path.dirname(savePath), { recursive: true });
+        const buffer = await response.body();
+        await fs.promises.writeFile(savePath, buffer);
+      } catch (err) {
+        // redirects / already-consumed bodies / weird urls sometimes throw here, just skip them
+      }
+    })();
+
+    pendingAssetWrites.push(writePromise);
+  });
+}
+
 // takes the screenshot like normal, but also dumps the page's full html into a matching .html file
 // right next to it. the VLM needs both the image and the raw dom to figure out an actual code fix,
 // screenshot alone doesn't cut it______note: sid
@@ -24,6 +57,10 @@ async function runCheckoutFlow(page, screenshotsDir, viewport, filenames, option
     captureDetail = false, // click into the first product's detail page and grab that too
     stopAtCart = false    // stop after the cart screenshot instead of going through checkout
   } = options;
+
+  // point the asset listener at this pass's folder before we navigate, so anything it loads
+  // (js, css, images) lands in the right place______note: sid
+  currentOutputDir = screenshotsDir;
 
   await page.setViewportSize(viewport);
   await page.goto('https://saucedemo.com');
@@ -130,6 +167,8 @@ async function captureBrokenState(page, screenshotsDir, options = {}) {
     filename = 'broken-button-clip.png'
   } = options;
 
+  currentOutputDir = screenshotsDir;
+
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('https://saucedemo.com');
 
@@ -194,6 +233,7 @@ async function rerunFlowForComparison(flowFn, ...args) {
   });
 
   const page = await browser.newPage();
+  setupAssetCapture(page);
 
   // desktop pass - the "main" run, now grabbing everything in one go: login page, product list,
   // product detail, a multi-item cart, and all the way through to confirmation.______note: sid
@@ -227,6 +267,9 @@ async function rerunFlowForComparison(flowFn, ...args) {
     cart: 'mobile-cart.png',
     confirmation: 'mobile-confirmation.png'
   });
+
+  // make sure every asset file has actually finished writing to disk before we close things out____note: sid
+  await Promise.all(pendingAssetWrites);
 
   // close it out automatically once everything's captured, no reason to leave the browser sitting there____note: sid
   await page.waitForTimeout(2000);
