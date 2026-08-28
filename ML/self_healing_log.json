@@ -526,5 +526,89 @@
       "confidence_score": 0.95,
       "explanation": "The button text is not visible, indicating that the text is cut off or hidden. The border of the button appears to be clipped by the edge of another box, suggesting a layout or design issue."
     }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The button with id 'react-burger-menu-btn' is stretched horizontally and clipped on the right side.",
+    "fix_applied": {
+      "selector": "#react-burger-menu-btn",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will allow the button to fully display without being clipped."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button's text and border are fully visible and readable without any parts cut off or hidden."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The button in the first product card is clipped and cut off.",
+    "fix_applied": {
+      "selector": "#page_wrapper .inventory_item:first-child .btn_inventory",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will allow the button to be fully visible."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button's text and border are fully visible and readable without any parts cut off or hidden."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The button in the first product card is clipped and cut off.",
+    "fix_applied": {
+      "selector": "#page_wrapper .inventory_item:first-child .btn_inventory",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will allow the button to be fully visible."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button's text and border are fully visible and readable without any parts cut off or hidden."
+    }
   }
 ]

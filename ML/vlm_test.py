@@ -27,15 +27,17 @@ LOG_PATH = "ML/self_healing_log.json"
 
 image_paths = [
     "ML/images/broken-button-clip.png",
-   # "screenshots/product-page.png",
-   # "screenshots/cart-multi-item.png",
-   # "screenshots/confirmation-page.png",
+    "screenshots/product-page.png",
+    "screenshots/cart-multi-item.png",
+    "screenshots/confirmation-page.png",
 ]
 
 HTML_FOR_IMAGE = {
     "ML/images/broken-button-clip.png": "screenshots/broken/broken-button-clip.html",
+    "screenshots/product-page.png": "screenshots/product-page.html",
+    "screenshots/cart-multi-item.png": "screenshots/cart-multi-item.html",
+    "screenshots/confirmation-page.png": "screenshots/confirmation-page.html",
 }
-
 REQUIRED_FIELDS = [
     "bug_found",
     "description",
@@ -71,6 +73,11 @@ Here is the page HTML for this screenshot:
 ```html
 {html_block}
 ```
+
+IMPORTANT CONTEXT: The visual defect being tested is located in the
+PRODUCT LISTING area (the grid of items below the header), specifically
+on the FIRST product card, NOT in the page header, hamburger menu icon,
+or navigation bar. Focus your visual inspection on the product grid area.
 
 LOOK SPECIFICALLY FOR:
 - Horizontal layout overflow or stretched/clipped button borders
@@ -147,7 +154,6 @@ Schema (types only - do not copy these placeholder values):
   }}
 }}
 """
-
 
 # -------------------------------------------------
 # Tiling Logic
