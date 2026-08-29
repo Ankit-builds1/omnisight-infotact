@@ -284,3 +284,18 @@ validates every VLM claim against the actual page HTML before a PR is
 generated. Elements the model names that don't exist in the DOM are
 rejected. This means an unreliable VLM does not translate into an
 unreliable pipeline — the system doesn't trust model output blindly.
+# Visual Bug Detection & Self-Healing Agent
+
+An automated QA visual auditing and self-healing engine driven by Vision-Language Models (Qwen2.5-VL 7B / Ollama) and Playwright.
+
+## 🛠️ Features & Pipeline
+
+1. **Dynamic Image Tiling**: Automatically checks resolution and splits large screenshots into overlapping tiles for high-resolution visual analysis.
+2. **Context-Aware Visual Auditing**: Analyzes DOM hierarchy alongside screenshots to identify visual bugs (clipping, overflow, alignment issues).
+3. **Automated CSS Remediation**: Parses target CSS selectors, applies patch rules directly to the HTML using BeautifulSoup, and re-renders the DOM via Playwright.
+4. **Contradiction Guard & Validation Engine**:
+   - **Selector Sanity Guard**: Prevents cross-branch DOM hallucination (e.g., mixing nav-bar elements with product grid items).
+   - **Self-Contradiction Check**: Validates VLM reasoning against its boolean status to catch false-positive fixes before deployment.
+5. **Audit Logging**: Persists execution status (`FIXED`, `NOT_FIXED`, `REJECTED_SELECTOR`, `APPLY_FAILED`) to `ML/self_healing_log.json`.
+
+## 🚀 Execution & Self-Healing Status Flowchart

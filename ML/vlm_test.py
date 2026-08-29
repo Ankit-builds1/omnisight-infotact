@@ -21,23 +21,24 @@ NUM_TILES = 3
 TILE_OVERLAP = 100
 SEVERITY_RANK = {"Minor": 1, "Major": 2, "Critical": 3}
 
-HTML_PATH = "screenshots/broken/broken-button-clip.html"
+HTML_PATH = "screenshots/broken/broken-button-clip/assets/broken-button-clip.html"
 AFTER_SCREENSHOT_PATH = "ML/images/after-fix.png"
 LOG_PATH = "ML/self_healing_log.json"
 
 image_paths = [
-    "ML/images/broken-button-clip.png",
-    "screenshots/product-page.png",
-    "screenshots/cart-multi-item.png",
-    "screenshots/confirmation-page.png",
+    "screenshots/broken/broken-button-clip/assets/broken-button-clip.png",
+    "screenshots/clean/product-page/assets/product-page.png",
+    "screenshots/clean/cart-multi-item/assets/cart-multi-item.png",
+    "screenshots/clean/confirmation-page/assets/confirmation-page.png",
 ]
 
 HTML_FOR_IMAGE = {
-    "ML/images/broken-button-clip.png": "screenshots/broken/broken-button-clip.html",
-    "screenshots/product-page.png": "screenshots/product-page.html",
-    "screenshots/cart-multi-item.png": "screenshots/cart-multi-item.html",
-    "screenshots/confirmation-page.png": "screenshots/confirmation-page.html",
+    "screenshots/broken/broken-button-clip/assets/broken-button-clip.png": "screenshots/broken/broken-button-clip/assets/broken-button-clip.html",
+    "screenshots/clean/product-page/assets/product-page.png": "screenshots/clean/product-page/assets/product-page.html",
+    "screenshots/clean/cart-multi-item/assets/cart-multi-item.png": "screenshots/clean/cart-multi-item/assets/cart-multi-item.html",
+    "screenshots/clean/confirmation-page/assets/confirmation-page.png": "screenshots/clean/confirmation-page/assets/confirmation-page.html",
 }
+
 REQUIRED_FIELDS = [
     "bug_found",
     "description",
@@ -46,6 +47,23 @@ REQUIRED_FIELDS = [
     "fix",
 ]
 
+# Words that indicate a defect is still present, used to catch VLM
+# self-contradiction: bug_still_present=False but explanation still
+# describes a visible defect.
+BUG_INDICATOR_PHRASES = [
+    "cut off", "cut-off", "clipped", "clipping", "hidden", "not visible",
+    "overflow", "overflowing", "stretched", "broken", "truncated",
+    "overlapping", "misaligned", "obscured", "not fully visible",
+]
+
+
+# Classes/keywords that belong to unrelated UI elements (nav, menu, header)
+# — if the VLM's selector for a PRODUCT-CARD bug contains these, it has
+# almost certainly hallucinated a path by mixing unrelated DOM branches.
+UNRELATED_SELECTOR_KEYWORDS = [
+    "burger", "bm-burger", "menu_button", "hamburger",
+    "primary_header", "header_container", "nav_",
+]
 
 # -------------------------------------------------
 # HTML Loader
@@ -78,6 +96,9 @@ IMPORTANT CONTEXT: The visual defect being tested is located in the
 PRODUCT LISTING area (the grid of items below the header), specifically
 on the FIRST product card, NOT in the page header, hamburger menu icon,
 or navigation bar. Focus your visual inspection on the product grid area.
+This context applies ONLY when a real defect is visible - if the
+screenshot shows a normal, undamaged page, report no bug regardless
+of this context.
 
 LOOK SPECIFICALLY FOR:
 - Horizontal layout overflow or stretched/clipped button borders
@@ -424,6 +445,54 @@ Schema (types only - do not copy these placeholder values):
 
 
 # -------------------------------------------------
+# Contradiction Guard — VLM's boolean vs its own explanation
+# -------------------------------------------------
+def sanity_check_selector(fix: dict) -> tuple[bool, str]:
+    """
+    Rejects selectors that mix unrelated DOM branches (e.g. hamburger-menu
+    classes combined with a product-card class) before we even try to apply
+    them. Returns (is_valid, reason).
+    """
+    selector = (fix.get("selector") or "").lower()
+
+    if not selector:
+        return False, "Selector is empty."
+
+    matched = [kw for kw in UNRELATED_SELECTOR_KEYWORDS if kw in selector]
+    if matched:
+        return False, (
+            f"Selector contains unrelated navigation/menu keywords {matched} "
+            f"combined with a product-card path — likely hallucinated by mixing "
+            f"two unrelated DOM branches."
+        )
+
+    return True, ""
+def sanity_check_evaluation(evaluation: dict) -> dict:
+    """
+    Guards against VLM self-contradiction: bug_still_present=False but the
+    explanation text itself describes a defect (e.g. "text is cut off").
+    If a contradiction is found, flip bug_still_present to True — fail-safe,
+    we never want a silently-wrong FIXED status pushed to a PR.
+    """
+    explanation = (evaluation.get("explanation") or "").lower()
+    bug_still_present = evaluation.get("bug_still_present", False)
+
+    if not bug_still_present:
+        matched = [p for p in BUG_INDICATOR_PHRASES if p in explanation]
+        if matched:
+            print(
+                f"   ⚠️  Contradiction detected: bug_still_present=False but "
+                f"explanation mentions {matched}. Overriding to True (fail-safe)."
+            )
+            evaluation = dict(evaluation)
+            evaluation["bug_still_present"] = True
+            evaluation["contradiction_flagged"] = True
+            evaluation["contradiction_reason"] = f"Explanation contains: {matched}"
+
+    return evaluation
+
+
+# -------------------------------------------------
 # Logging
 # -------------------------------------------------
 def log_self_healing_result(entry):
@@ -523,7 +592,7 @@ def audit_image(img):
 # -------------------------------------------------
 if __name__ == "__main__":
 
-    bug_screenshot = "ML/images/broken-button-clip.png"
+    bug_screenshot = "screenshots/broken/broken-button-clip/assets/broken-button-clip.png"
 
     if os.path.exists(HTML_PATH):
         print(f"Refreshing {bug_screenshot} from current {HTML_PATH} ...")
@@ -586,8 +655,7 @@ if __name__ == "__main__":
 
             print("\n1. Applying fix:")
             print(json.dumps(fix, indent=2))
-
-            try:
+try:
                 apply_css_fix(HTML_PATH, fix)
 
                 print("\n2. Taking after-fix screenshot...")
@@ -598,6 +666,7 @@ if __name__ == "__main__":
                     AFTER_SCREENSHOT_PATH,
                     detection["description"],
                 )
+                evaluation = sanity_check_evaluation(evaluation)
                 print(json.dumps(evaluation, indent=2))
 
                 status = "NOT_FIXED" if evaluation.get("bug_still_present") else "FIXED"
@@ -614,5 +683,21 @@ if __name__ == "__main__":
                 print(f"SELF-HEALING RESULT: {status}")
                 print("==============================")
 
-            except Exception as e:
+except Exception as e:
                 print(f"❌ Self-healing error: {e}")
+
+                # Log the failure too, so bad selectors show up in the
+                # audit trail instead of silently disappearing.
+                log_self_healing_result({
+                    "html_path": HTML_PATH,
+                    "original_bug": detection["description"],
+                    "fix_applied": fix,
+                    "status": "APPLY_FAILED",
+                    "evaluation": None,
+                    "error": str(e),
+                })
+
+                print("\n==============================")
+                print("SELF-HEALING RESULT: APPLY_FAILED")
+                print("==============================")
+                

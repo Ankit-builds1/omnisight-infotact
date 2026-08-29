@@ -610,5 +610,83 @@
       "confidence_score": 0.95,
       "explanation": "The button's text and border are fully visible and readable without any parts cut off or hidden."
     }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip/assets/broken-button-clip.html",
+    "original_bug": "The button in the first product card is stretched horizontally and clipped.",
+    "fix_applied": {
+      "selector": "#root #page_wrapper .inventory_item:first-child .btn_inventory",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will allow the button to expand and not be clipped."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button text is not visible, indicating that the text is cut off or hidden. The border of the button appears to be clipped by the edge of another box, suggesting a layout or design issue."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip/assets/broken-button-clip.html",
+    "original_bug": "The button in the first product card is horizontally stretched and clipped.",
+    "fix_applied": {
+      "selector": "#root .page_wrapper .contents_wrapper .header_container .primary_header .menu_button_container .bm-burger-button .btn_inventory",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will allow the button to expand and not be clipped."
+    },
+    "status": "APPLY_FAILED",
+    "evaluation": null,
+    "error": "SELECTOR_NOT_FOUND: no element matches '#root .page_wrapper .contents_wrapper .header_container .primary_header .menu_button_container .bm-burger-button .btn_inventory'"
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip/assets/broken-button-clip.html",
+    "original_bug": "The button in the first product card is horizontally stretched and clipped.",
+    "fix_applied": {
+      "selector": "#root .page_wrapper .contents_wrapper .header_container .primary_header .menu_button_container .bm-burger-button .btn_inventory",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will allow the button to expand and not be clipped."
+    },
+    "status": "APPLY_FAILED",
+    "evaluation": null,
+    "error": "SELECTOR_NOT_FOUND: no element matches '#root .page_wrapper .contents_wrapper .header_container .primary_header .menu_button_container .bm-burger-button .btn_inventory'"
   }
 ]
