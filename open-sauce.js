@@ -2,48 +2,69 @@ const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
 
-// tracks which folder the next batch of asset responses should get saved into - gets pointed
-// at a different output dir each time a flow starts a fresh page.goto() against a new screenshotsDir.
-// also holds onto every write promise so we can wait for them all before the browser closes______note: sid
-let currentOutputDir = null;
-const pendingAssetWrites = [];
+// keeps every asset (js/css/image/font under /assets/) we've seen so far in memory, keyed by
+// url pathname. most of these - especially the js/css bundle - only actually load ONCE per page
+// navigation, not once per screenshot, so relying on fresh network events at the exact moment
+// of each individual screenshot would miss them for every capture after the first. caching them
+// as they come in and replaying the cache into each page's own folder fixes that______note: sid
+const assetCache = new Map();
 
-// response listener lagao - before page.goto() in every flow this hooks in and saves every
-// /assets/ response straight to disk, same relative path structure the html already references
-// (eg /assets/index-XyuNVFOR.js), so the saved html doesn't need any rewriting - the assets/
-// folder just needs to sit next to it and everything resolves correctly______note: sid
 function setupAssetCapture(page) {
   page.on('response', (response) => {
     const url = response.url();
     if (!url.includes('/assets/')) return;
-    if (!currentOutputDir) return;
 
-    const writePromise = (async () => {
+    (async () => {
       try {
         const urlPath = new URL(url).pathname; // e.g. /assets/index-XyuNVFOR.js
-        const savePath = path.join(currentOutputDir, urlPath);
-
-        await fs.promises.mkdir(path.dirname(savePath), { recursive: true });
+        if (assetCache.has(urlPath)) return; // already cached this one
         const buffer = await response.body();
-        await fs.promises.writeFile(savePath, buffer);
+        assetCache.set(urlPath, buffer);
       } catch (err) {
         // redirects / already-consumed bodies / weird urls sometimes throw here, just skip them
       }
     })();
-
-    pendingAssetWrites.push(writePromise);
   });
 }
 
-// takes the screenshot like normal, but also dumps the page's full html into a matching .html file
-// right next to it. the VLM needs both the image and the raw dom to figure out an actual code fix,
-// screenshot alone doesn't cut it______note: sid
+// writes out everything currently sitting in the asset cache into this specific page's own
+// assets/ folder - called every time we grab a screenshot, so each page folder ends up fully
+// self-contained (png + html + assets all together) instead of one shared assets/ folder for
+// the whole run______note: sid
+async function saveAssetsFor(pageDir) {
+  if (assetCache.size === 0) return;
+
+  const assetsDir = path.join(pageDir, 'assets');
+  await fs.promises.mkdir(assetsDir, { recursive: true });
+
+  for (const [urlPath, buffer] of assetCache) {
+    const filename = path.basename(urlPath);
+    await fs.promises.writeFile(path.join(assetsDir, filename), buffer);
+  }
+}
+
+// takes the screenshot like normal, but into its own folder named after the page (e.g. product-page/
+// product-page.png + product-page.html), and also copies whatever's in the asset cache into that
+// same folder's assets/ subfolder - so every single capture ends up fully self-contained, not
+// sharing one assets/ folder across the whole run. the VLM needs the image, the raw dom, AND the
+// actual js/css/images to have anything to load if it opens the html standalone______note: sid
+// takes the screenshot like normal, but everything - the png, the html, AND the js/css/image
+// assets - all go straight into this page's own assets/ folder together, not split across two
+// levels. e.g. product-page/assets/product-page.png, product-page.html, index-XyuNVFOR.js, all
+// sitting in the same folder______note: sid
 async function captureSnapshot(page, screenshotsDir, filename) {
-  await page.screenshot({ path: path.join(screenshotsDir, filename) });
+  const pageName = filename.replace('.png', '');
+  const pageDir = path.join(screenshotsDir, pageName);
+  const assetsDir = path.join(pageDir, 'assets');
+  fs.mkdirSync(assetsDir, { recursive: true });
+
+  await page.screenshot({ path: path.join(assetsDir, filename) });
 
   const html = await page.content();
   const htmlFilename = filename.replace('.png', '.html');
-  fs.writeFileSync(path.join(screenshotsDir, htmlFilename), html);
+  fs.writeFileSync(path.join(assetsDir, htmlFilename), html);
+
+  await saveAssetsFor(pageDir);
 }
 
 // runs the login -> add to cart -> checkout flow at whatever viewport size you give it,
@@ -57,10 +78,6 @@ async function runCheckoutFlow(page, screenshotsDir, viewport, filenames, option
     captureDetail = false, // click into the first product's detail page and grab that too
     stopAtCart = false    // stop after the cart screenshot instead of going through checkout
   } = options;
-
-  // point the asset listener at this pass's folder before we navigate, so anything it loads
-  // (js, css, images) lands in the right place______note: sid
-  currentOutputDir = screenshotsDir;
 
   await page.setViewportSize(viewport);
   await page.goto('https://saucedemo.com');
@@ -167,8 +184,6 @@ async function captureBrokenState(page, screenshotsDir, options = {}) {
     filename = 'broken-button-clip.png'
   } = options;
 
-  currentOutputDir = screenshotsDir;
-
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('https://saucedemo.com');
 
@@ -260,6 +275,19 @@ async function rerunFlowForComparison(flowFn, ...args) {
     filename: 'broken-button-reference.png'
   });
 
+  // the actual verified fix from the ML side, run through the same flow to get a real "after"
+  // screenshot - not the manual placeholder above______note: sid
+  await captureBrokenState(page, afterDir, {
+    customCss: `
+      #page_wrapper .inventory_item:first-child .btn_inventory {
+        width: auto;
+        max-width: none;
+        overflow: visible;
+      }
+    `,
+    filename: 'broken-button-fixed.png'
+  });
+
   // mobile pass, roughly an iphone x/11 size, same flow just repeated at a smaller viewport
   console.log('switching to mobile viewport, redoing the flow for mobile screenshots');
   await runCheckoutFlow(page, cleanDir, { width: 375, height: 812 }, {
@@ -267,9 +295,6 @@ async function rerunFlowForComparison(flowFn, ...args) {
     cart: 'mobile-cart.png',
     confirmation: 'mobile-confirmation.png'
   });
-
-  // make sure every asset file has actually finished writing to disk before we close things out____note: sid
-  await Promise.all(pendingAssetWrites);
 
   // close it out automatically once everything's captured, no reason to leave the browser sitting there____note: sid
   await page.waitForTimeout(2000);
