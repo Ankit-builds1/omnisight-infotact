@@ -59,7 +59,7 @@ that stitches them together into one pipeline.
 
 ## 👥 Team & Week 4 Progress
 
-### 🧠 ML — Vision & Self-Healing (Priya)
+### 🧠 ML — Vision & Self-Healing 
 
 - ✅ Migrated from LLaVA 1.5 7B → **Qwen2.5-VL 7B** after LLaVA's fixed-resolution CLIP projector was found to compress viewport-overflow bugs into invisibility
 - ✅ Self-healing loop proven **consistent across 3 independent runs** on the real injected bug
@@ -67,14 +67,14 @@ that stitches them together into one pipeline.
 - ✅ **Contradiction guard** added: catches cases where the VLM's `bug_still_present: false` conflicts with its own explanation text, and fails safe instead of reporting a false "FIXED"
 - 🔄 **In progress:** image chunking/cropping to focus the VLM strictly on the anomalous region — cuts tokens and latency, and reduces selector hallucination on complex pages
 
-### 🌐 Frontend — Capture Pipeline (Sid)
+### 🌐 Frontend — Capture Pipeline
 
 - ✅ Root-caused and fixed a 4-day asset-loading blocker: the original capture script saved HTML only, so React never hydrated and every re-evaluation screenshot came back blank
 - ✅ Rebuilt the capture pipeline to save HTML + CSS + JS + images together per page (`screenshots/<page>/assets/`)
 - ✅ Delivered a genuine, Playwright-captured "after" screenshot for the verified fix
 - ✅ Provided assets for **8 pages** (more than the 3 requested), unblocking both the ML and backend tracks
 
-### ⚙️ Backend — Pipeline & Integration (Ankit)
+### ⚙️ Backend — Pipeline & Integration
 
 - ✅ **GitHub Integration** — PyGithub-driven branch creation, HTML commit, and PR opening, gated so only self-healing-verified fixes ever reach GitHub
 - ✅ **Confidence-threshold review flag** — fixes below `0.6` confidence still open a PR, but are clearly marked `[NEEDS REVIEW]` instead of being silently merged or silently dropped
