@@ -33,25 +33,13 @@ wrong, proposes a CSS fix, applies it, re-screenshots the result, and
 verifies its own fix worked — before a single line of that fix is trusted
 enough to reach GitHub.
 
-🌐 Staging site
-│
-▼
-📸 Playwright screenshot + DOM snapshot
-│
-▼
-🧠 VLM (Qwen2.5-VL 7B) — "what's visually wrong here?"
-│
-▼
-🩹 Self-healing loop — apply fix → re-screenshot → VLM re-verifies
-│
-▼
-🔒 DOM cross-check — reject hallucinated / contradictory reports
-│
-▼
-🚀 GitHub PR — confidence-gated, screenshots attached, auto-branched
-│
-▼
-🖥️ React QA Dashboard — human approves or rejects, one click
+1. 🌐 **Staging site** — the live app under test
+2. 📸 **Playwright** captures a screenshot + DOM snapshot
+3. 🧠 **VLM (Qwen2.5-VL 7B)** — "what's visually wrong here?"
+4. 🩹 **Self-healing loop** — apply fix → re-screenshot → VLM re-verifies
+5. 🔒 **DOM cross-check** — reject hallucinated or self-contradictory reports
+6. 🚀 **GitHub PR** — confidence-gated, screenshots attached, auto-branched
+7. 🖥️ **React QA Dashboard** — human approves or rejects, one click
 
 
 ---
