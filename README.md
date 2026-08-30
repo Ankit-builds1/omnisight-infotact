@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🔍 OmniSight
+# 🔍OmniSight
 
 ### Multimodal UI Self-Healing & RPA Agent
 
