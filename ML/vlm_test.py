@@ -20,6 +20,7 @@ TILE_TRIGGER_WIDTH = 2000
 NUM_TILES = 3
 TILE_OVERLAP = 100
 SEVERITY_RANK = {"Minor": 1, "Major": 2, "Critical": 3}
+VOTE_ATTEMPTS = 3  # how many times each image is audited for the majority vote
 
 HTML_PATH = "screenshots/broken/broken-button-clip/assets/broken-button-clip.html"
 AFTER_SCREENSHOT_PATH = "ML/images/after-fix.png"
@@ -47,28 +48,22 @@ REQUIRED_FIELDS = [
     "fix",
 ]
 
-# Words that indicate a defect is still present, used to catch VLM
-# self-contradiction: bug_still_present=False but explanation still
-# describes a visible defect.
 BUG_INDICATOR_PHRASES = [
     "cut off", "cut-off", "clipped", "clipping", "hidden", "not visible",
     "overflow", "overflowing", "stretched", "broken", "truncated",
     "overlapping", "misaligned", "obscured", "not fully visible",
 ]
 
-
-# Classes/keywords that belong to unrelated UI elements (nav, menu, header)
-# — if the VLM's selector for a PRODUCT-CARD bug contains these, it has
-# almost certainly hallucinated a path by mixing unrelated DOM branches.
 UNRELATED_SELECTOR_KEYWORDS = [
     "burger", "bm-burger", "menu_button", "hamburger",
     "primary_header", "header_container", "nav_",
 ]
 
+
 # -------------------------------------------------
 # HTML Loader
 # -------------------------------------------------
-def load_page_html(img_path, max_chars=3000):
+def load_page_html(img_path, max_chars=8000):
     html_file = HTML_FOR_IMAGE.get(img_path)
     if not html_file:
         print(f"   ⚠️  No HTML mapped for {img_path} - selector will be null")
@@ -127,6 +122,11 @@ RULES:
      }}
 3. SELECTOR RULES (strict):
    - The selector MUST match an element that actually exists in the HTML above.
+   - The selector MUST come from the SAME product card / element you
+     visually identified as broken. Do NOT combine class names from
+     different, unrelated parts of the page (e.g. never mix a
+     navigation/header/menu class with a product-card class in the same
+     selector — they are never the same element).
    - Prefer the element's id, written as "#the-id".
    - If it has no id, use its exact class exactly as spelled in the HTML.
    - Do NOT invent, guess, abbreviate, or translate selectors.
@@ -216,7 +216,7 @@ def run_vlm(img_path, page_html):
     response = ollama.chat(
         model=MODEL,
         format="json",
-        options={"num_ctx": 16384},
+        options={"num_ctx": 16384, "temperature": 0.1},
         messages=[
             {
                 "role": "user",
@@ -429,7 +429,7 @@ Schema (types only - do not copy these placeholder values):
     response = ollama.chat(
         model=MODEL,
         format="json",
-        options={"num_ctx": 16384},
+        options={"num_ctx": 16384, "temperature": 0.1},
         messages=[
             {
                 "role": "user",
@@ -445,14 +445,9 @@ Schema (types only - do not copy these placeholder values):
 
 
 # -------------------------------------------------
-# Contradiction Guard — VLM's boolean vs its own explanation
+# Selector Guard — rejects hallucinated cross-branch selectors
 # -------------------------------------------------
 def sanity_check_selector(fix: dict) -> tuple[bool, str]:
-    """
-    Rejects selectors that mix unrelated DOM branches (e.g. hamburger-menu
-    classes combined with a product-card class) before we even try to apply
-    them. Returns (is_valid, reason).
-    """
     selector = (fix.get("selector") or "").lower()
 
     if not selector:
@@ -467,13 +462,12 @@ def sanity_check_selector(fix: dict) -> tuple[bool, str]:
         )
 
     return True, ""
+
+
+# -------------------------------------------------
+# Contradiction Guard — VLM's boolean vs its own explanation
+# -------------------------------------------------
 def sanity_check_evaluation(evaluation: dict) -> dict:
-    """
-    Guards against VLM self-contradiction: bug_still_present=False but the
-    explanation text itself describes a defect (e.g. "text is cut off").
-    If a contradiction is found, flip bug_still_present to True — fail-safe,
-    we never want a silently-wrong FIXED status pushed to a PR.
-    """
     explanation = (evaluation.get("explanation") or "").lower()
     bug_still_present = evaluation.get("bug_still_present", False)
 
@@ -588,6 +582,34 @@ def audit_image(img):
 
 
 # -------------------------------------------------
+# Reliability Wrapper — majority vote across multiple audit runs
+# -------------------------------------------------
+def audit_image_reliable(img, attempts=VOTE_ATTEMPTS):
+    """
+    Runs audit_image() multiple times and returns the majority verdict.
+    Reduces the chance that one unlucky VLM call flips the result.
+    """
+    results = [audit_image(img) for _ in range(attempts)]
+    valid = [r for r in results if r is not None]
+
+    if not valid:
+        return None
+
+    bug_votes = [r for r in valid if r["bug_found"]]
+    clean_votes = [r for r in valid if not r["bug_found"]]
+
+    print(f"   [Reliability check] {len(bug_votes)}/{len(valid)} runs said BUG_FOUND")
+
+    if len(bug_votes) > len(clean_votes):
+        return max(bug_votes, key=lambda r: r["confidence_score"])
+    elif len(clean_votes) > len(bug_votes):
+        return clean_votes[0]
+    else:
+        print("   [Reliability check] Tie vote — defaulting to BUG_FOUND (fail-safe)")
+        return bug_votes[0] if bug_votes else clean_votes[0]
+
+
+# -------------------------------------------------
 # Main Execution
 # -------------------------------------------------
 if __name__ == "__main__":
@@ -609,7 +631,7 @@ if __name__ == "__main__":
         print(f"\n==================== Testing: {img} ====================")
 
         try:
-            final = audit_image(img)
+            final = audit_image_reliable(img)
 
             print("\n   ===== MERGED RESULT =====")
 
@@ -634,7 +656,7 @@ if __name__ == "__main__":
         print(f"⚠️ Skipping self-healing: {bug_screenshot} not found")
 
     else:
-        detection = audit_image(bug_screenshot)
+        detection = audit_image_reliable(bug_screenshot)
 
         if detection is None or not detection["bug_found"]:
             print("🟢 No bug detected - nothing to fix")
@@ -655,49 +677,64 @@ if __name__ == "__main__":
 
             print("\n1. Applying fix:")
             print(json.dumps(fix, indent=2))
-try:
-                apply_css_fix(HTML_PATH, fix)
 
-                print("\n2. Taking after-fix screenshot...")
-                screenshot_html(HTML_PATH, AFTER_SCREENSHOT_PATH)
+            is_valid, reason = sanity_check_selector(fix)
 
-                print("\n3. Evaluating fixed screenshot...")
-                evaluation = evaluate_fixed_screenshot(
-                    AFTER_SCREENSHOT_PATH,
-                    detection["description"],
-                )
-                evaluation = sanity_check_evaluation(evaluation)
-                print(json.dumps(evaluation, indent=2))
-
-                status = "NOT_FIXED" if evaluation.get("bug_still_present") else "FIXED"
-
+            if not is_valid:
+                print(f"⚠️  Selector rejected before apply: {reason}")
                 log_self_healing_result({
                     "html_path": HTML_PATH,
                     "original_bug": detection["description"],
                     "fix_applied": fix,
-                    "status": status,
-                    "evaluation": evaluation,
-                })
-
-                print("\n==============================")
-                print(f"SELF-HEALING RESULT: {status}")
-                print("==============================")
-
-except Exception as e:
-                print(f"❌ Self-healing error: {e}")
-
-                # Log the failure too, so bad selectors show up in the
-                # audit trail instead of silently disappearing.
-                log_self_healing_result({
-                    "html_path": HTML_PATH,
-                    "original_bug": detection["description"],
-                    "fix_applied": fix,
-                    "status": "APPLY_FAILED",
+                    "status": "BAD_SELECTOR",
                     "evaluation": None,
-                    "error": str(e),
+                    "error": reason,
                 })
-
                 print("\n==============================")
-                print("SELF-HEALING RESULT: APPLY_FAILED")
+                print("SELF-HEALING RESULT: BAD_SELECTOR")
                 print("==============================")
-                
+
+            else:
+                try:
+                    apply_css_fix(HTML_PATH, fix)
+
+                    print("\n2. Taking after-fix screenshot...")
+                    screenshot_html(HTML_PATH, AFTER_SCREENSHOT_PATH)
+
+                    print("\n3. Evaluating fixed screenshot...")
+                    evaluation = evaluate_fixed_screenshot(
+                        AFTER_SCREENSHOT_PATH,
+                        detection["description"],
+                    )
+                    evaluation = sanity_check_evaluation(evaluation)
+                    print(json.dumps(evaluation, indent=2))
+
+                    status = "NOT_FIXED" if evaluation.get("bug_still_present") else "FIXED"
+
+                    log_self_healing_result({
+                        "html_path": HTML_PATH,
+                        "original_bug": detection["description"],
+                        "fix_applied": fix,
+                        "status": status,
+                        "evaluation": evaluation,
+                    })
+
+                    print("\n==============================")
+                    print(f"SELF-HEALING RESULT: {status}")
+                    print("==============================")
+
+                except Exception as e:
+                    print(f"❌ Self-healing error: {e}")
+
+                    log_self_healing_result({
+                        "html_path": HTML_PATH,
+                        "original_bug": detection["description"],
+                        "fix_applied": fix,
+                        "status": "APPLY_FAILED",
+                        "evaluation": None,
+                        "error": str(e),
+                    })
+
+                    print("\n==============================")
+                    print("SELF-HEALING RESULT: APPLY_FAILED")
+                    print("==============================")

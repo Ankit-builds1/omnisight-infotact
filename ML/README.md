@@ -299,3 +299,22 @@ An automated QA visual auditing and self-healing engine driven by Vision-Languag
 5. **Audit Logging**: Persists execution status (`FIXED`, `NOT_FIXED`, `REJECTED_SELECTOR`, `APPLY_FAILED`) to `ML/self_healing_log.json`.
 
 ## 🚀 Execution & Self-Healing Status Flowchart
+## Known limitation — VLM detection consistency
+
+Testing across multiple runs showed the injected bug is not detected
+consistently on every VLM call, even with majority voting (3 attempts)
+and temperature=0.1. This appears to be a fundamental limitation of the
+7B-parameter local model rather than a code/prompt issue — model
+evaluation (Qwen2.5-VL vs MiniCPM-V) showed similar inconsistency across
+both models tested.
+
+Mitigations already in place:
+- Majority voting across 3 audit attempts
+- Selector-hallucination guard (rejects cross-branch selector mixing)
+- Self-contradiction guard (catches VLM claiming "fixed" while its own
+  explanation describes a defect)
+- Backend confidence-threshold gating (low-confidence fixes are flagged
+  for human review, never silently merged)
+
+This is why the pipeline treats no single VLM call as authoritative —
+every layer downstream assumes the VLM can be wrong.

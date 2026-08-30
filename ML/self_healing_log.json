@@ -688,5 +688,59 @@
     "status": "APPLY_FAILED",
     "evaluation": null,
     "error": "SELECTOR_NOT_FOUND: no element matches '#root .page_wrapper .contents_wrapper .header_container .primary_header .menu_button_container .bm-burger-button .btn_inventory'"
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip/assets/broken-button-clip.html",
+    "original_bug": "The button in the first product card is stretched horizontally and clipped at the right edge.",
+    "fix_applied": {
+      "selector": "#root .page_wrapper .contents_wrapper .header_container .primary_header .menu_button_container .bm-burger-button .btn_inventory",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will allow the button to expand and display fully without clipping."
+    },
+    "status": "BAD_SELECTOR",
+    "evaluation": null,
+    "error": "Selector contains unrelated navigation/menu keywords ['burger', 'bm-burger', 'menu_button', 'primary_header', 'header_container'] combined with a product-card path \u2014 likely hallucinated by mixing two unrelated DOM branches."
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip/assets/broken-button-clip.html",
+    "original_bug": "The first product card in the product listing area has a broken button border.",
+    "fix_applied": {
+      "selector": ".btn_inventory",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "2200px"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ]
+    },
+    "status": "NOT_FIXED",
+    "evaluation": {
+      "bug_still_present": true,
+      "confidence_score": 1.0,
+      "explanation": "The button is fully visible and readable with no text cut off or hidden. The border is a full rectangle with no parts sliced off.",
+      "contradiction_flagged": true,
+      "contradiction_reason": "Explanation contains: ['cut off', 'hidden']"
+    }
   }
 ]
