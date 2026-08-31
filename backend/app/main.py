@@ -2,7 +2,7 @@
 FastAPI App — OmniSight Backend (Week 4)
 
 QA Dashboard ke liye REST API: open PRs list karo, detail dekho,
-approve (merge) ya reject (close) karo.
+approve (merge) ya reject (close) karo, aur PR decision history dekho.
 """
 
 from fastapi import FastAPI, HTTPException
@@ -14,6 +14,7 @@ from github_integration import (
     get_pr_details,
     merge_pr,
     close_pr_with_comment,
+    get_pr_history,
 )
 
 app = FastAPI(title="OmniSight Dashboard API")
@@ -41,6 +42,15 @@ def get_prs():
     """Sab open PRs list karo (dashboard ki main list view)."""
     try:
         return list_open_prs()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/prs/history")
+def get_history():
+    """PR decision history (merged/rejected) — dashboard ka History tab."""
+    try:
+        return get_pr_history()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
