@@ -742,5 +742,65 @@
       "contradiction_flagged": true,
       "contradiction_reason": "Explanation contains: ['cut off', 'hidden']"
     }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip/assets/broken-button-clip.html",
+    "original_bug": "The button has a stretched and clipped border, making it appear larger than intended and partially cut off.",
+    "fix_applied": {
+      "selector": "#root .inventory_item:first-child .btn_inventory",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will allow the button to display fully without clipping."
+    },
+    "status": "NOT_FIXED",
+    "evaluation": {
+      "bug_still_present": true,
+      "confidence_score": 0.95,
+      "explanation": "The button text is not visible, indicating that the text is cut off or hidden. The border of the button is also not fully visible, suggesting that the button is clipped by the edge of another box.",
+      "contradiction_flagged": true,
+      "contradiction_reason": "Explanation contains: ['cut off', 'clipped', 'hidden', 'not visible', 'not fully visible']"
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip/assets/broken-button-clip.html",
+    "original_bug": "The button has a stretched border and is clipped off on the right side.",
+    "fix_applied": {
+      "selector": "#root .inventory_item:first-child .btn_inventory",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relax the button's width and max-width to allow it to expand and avoid clipping."
+    },
+    "status": "NOT_FIXED",
+    "evaluation": {
+      "bug_still_present": true,
+      "confidence_score": 0.95,
+      "explanation": "The button text is not visible, indicating that the text is cut off or hidden. The border of the button is also not fully visible, suggesting that part of the button is clipped by the edge of another box.",
+      "contradiction_flagged": true,
+      "contradiction_reason": "Explanation contains: ['cut off', 'clipped', 'hidden', 'not visible', 'not fully visible']"
+    }
   }
 ]
