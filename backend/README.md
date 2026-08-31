@@ -186,3 +186,133 @@ Confidence scoring alone assumed the model knows when it is uncertain. Testing
 showed it does not. The DOM cross-check replaces that assumption with
 verification against the actual page, so an AI-generated fix cannot reach a
 pull request unless the element it claims to fix demonstrably exists.
+
+## Week 3 complete — GitHub Integration
+
+The backend closes the loop: once a self-healing fix is verified locally, it
+is committed to a real branch and opened as a reviewable GitHub Pull Request
+— no manual git commands, no manual PR authoring.
+
+`backend/app/github_integration.py` handles the entire lifecycle using PyGithub:
+
+- **`create_branch()`** — creates a uniquely named `fix/bug-<timestamp>` branch off `backend-fastapi`
+- **`apply_fix_to_html()`** — applies the VLM's structured CSS fix directly to the real page HTML using BeautifulSoup, injecting the declarations as an inline `style` attribute on the exact matched element
+- **`commit_fix()`** — commits the patched HTML to the new branch
+- **`open_pull_request()`** — opens a PR with a structured body: bug description, severity, confidence, selector, CSS diff, and explanation
+- **`create_fix_pr_from_self_healing()`** — the entry point wired to the ML self-healing loop; **only creates a PR when the loop's status is `FIXED`**, so an unverified or still-broken fix can never reach GitHub in the first place
+
+### Confidence-threshold gating
+
+A fix being marked `FIXED` by the self-healing loop does not, on its own,
+guarantee it is safe to merge blindly — the same VLM-reliability findings from
+Week 2 apply here too. So `create_fix_pr_from_self_healing()` re-checks the
+loop's own `confidence_score` against a `0.6` threshold before opening the PR:
+
+- **`confidence_score >= 0.6`** → normal PR, title prefixed `Auto-fix:`
+- **`confidence_score < 0.6`** → PR still opens (nothing is silently dropped),
+  but the title is prefixed `[NEEDS REVIEW] Auto-fix:` and the body carries an
+  explicit warning banner telling the reviewer not to merge without manually
+  checking the before/after screenshots
+- **Non-numeric or missing confidence** → treated as low-confidence by default
+  (fail-safe: uncertainty defaults to "needs a human," never to "trust it")
+
+### Verified on the real injected bug
+
+The pipeline was run end-to-end against the actual saucedemo.com defect: the
+Sauce Labs Backpack "Add to cart" button forced to `width: 2200px`, overflowing
+the viewport and clipping off-screen.
+
+**PR #6** — the correct, verified fix:
+- **Selector:** `#page_wrapper .inventory_item:first-child .btn_inventory`
+- **CSS changes:** `width: auto`, `max-width: none`, `overflow: visible`
+- **Confidence:** 0.95 — no review flag
+- Before/after screenshots attached directly to the PR as visual proof, captured via Playwright against real saucedemo.com HTML and assets
+
+Earlier PRs (#1–#5, #7, #8) were early development runs, wrong-element
+detections (Bike Light instead of Backpack), or intentional test runs proving
+the confidence-gate logic — all closed with an explanatory comment linking to
+PR #6 as the correct fix. Stray `fix/bug-*` branches from those runs were
+pruned from the remote so the branch list only reflects live work.
+
+### GitHub Integration — Test Results
+
+| Test | Expected | Result |
+|---|---|---|
+| `FIXED` status, high confidence | Normal PR opens, no review flag | ✅ PR opened |
+| `NOT_FIXED` status | PR creation skipped entirely | ✅ Correctly skipped, nothing pushed |
+| `FIXED` status, low confidence (0.42) | PR opens, flagged `[NEEDS REVIEW]` | ✅ PR opened with warning banner |
+
+Run with `python github_integration.py` from `backend/app` — the `__main__`
+block exercises all three cases against a real saucedemo HTML fixture.
+
+### Why This Matters
+
+The base spec auto-merges AI-generated fixes with no safety check. This
+pipeline instead treats every automated fix as provisionally trustworthy at
+best: `NOT_FIXED` results never reach GitHub, `FIXED`-but-uncertain results
+still reach a human but are impossible to merge accidentally without noticing
+the flag, and only fixes that are both self-healing-verified and
+high-confidence look like a normal, mergeable PR. Nothing is ever silently
+dropped, and nothing is ever silently trusted.
+
+## Week 4 (in progress) — QA Review Dashboard
+
+Week 3 produces trustworthy, well-labeled PRs. Week 4 gives a human QA
+manager a fast way to act on them without needing GitHub access or git
+familiarity — the dashboard is the "Refine & Polish" layer that turns the
+pipeline into something a non-engineer can operate.
+
+### Backend — `backend/app/main.py`
+
+A FastAPI app exposing the PR pipeline as a small REST API, built on top of
+four new functions added to `github_integration.py`:
+
+- **`GET /prs`** — lists every open PR against `backend-fastapi`, with
+  confidence, severity, and `needs_review` parsed straight out of the PR body
+  so the dashboard never has to touch raw markdown
+- **`GET /prs/{pr_number}`** — full detail for a single PR
+- **`POST /prs/{pr_number}/approve`** — merges the PR (squash merge)
+- **`POST /prs/{pr_number}/reject`** — posts a rejection-reason comment, then
+  closes the PR — rejections are never silent, the reason is always recorded
+  on the PR itself
+
+CORS is open for local development so the Vite dev server (`localhost:5173`)
+can call the API (`localhost:8000`) directly without a proxy.
+
+### Frontend — `dashboard/`
+
+A lightweight React + Vite single-page dashboard, no routing or state
+library needed for this scope:
+
+- **PR cards** — bordered in green / yellow / red based on confidence
+  (`>= 0.8` / `>= 0.6` / `< 0.6`), so a QA manager can triage visually before
+  reading a single word
+- **Severity badges** — Critical / Major / Minor, color-coded independently
+  of confidence
+- **`NEEDS REVIEW` tag** — surfaces the same flag Week 3 set on the PR title,
+  now visible without opening GitHub
+- **Analytics summary bar** — open PR count, needs-review count, and average
+  confidence across all open PRs, computed client-side from the same `/prs`
+  response
+- **One-click actions** — Approve & Merge, or Reject with an optional
+  free-text reason, both calling straight through to the FastAPI endpoints
+  above and refreshing the list on completion
+
+### End-to-end loop, closed
+
+With Week 4 in place, the full pipeline is operable without a terminal:
+
+VLM detects bug → self-healing loop verifies fix → GitHub PR opens
+(confidence-gated, screenshots attached) → QA manager reviews and
+approves/rejects from the React dashboard → PR merges or closes with
+a recorded reason
+
+
+### Why This Matters
+
+The base spec asks for a dashboard so a QA manager can "approve or reject"
+automated PRs — but the real value is in what the dashboard surfaces, not
+just that it exists. Because Week 3 already embeds confidence, severity, and
+review-flag data directly into every PR body, the dashboard needs no separate
+database or state — it's a thin, honest window onto exactly what the backend
+already decided, with nothing recomputed or guessed on the frontend.
