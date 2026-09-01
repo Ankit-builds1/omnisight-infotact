@@ -802,5 +802,36 @@
       "contradiction_flagged": true,
       "contradiction_reason": "Explanation contains: ['cut off', 'clipped', 'hidden', 'not visible', 'not fully visible']"
     }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip/assets/broken-button-clip.html",
+    "original_bug": "The button has a stretched border and appears to be clipped off on the right side.",
+    "fix_applied": {
+      "selector": "#root .inventory_item:first-child .btn_inventory",
+      "selector_confidence": 0.9,
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relax the button's width and remove clipping to ensure it is fully visible."
+    },
+    "status": "NOT_FIXED",
+    "evaluation": {
+      "bug_still_present": true,
+      "confidence_score": 0.95,
+      "explanation": "The button text appears to be fully visible and readable, with no part of its border clipped by the edge of another box. The text is not cut off or hidden.",
+      "contradiction_flagged": true,
+      "contradiction_reason": "Explanation contains: ['cut off', 'clipped', 'hidden']"
+    }
   }
 ]
