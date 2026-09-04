@@ -1,6 +1,6 @@
 # open-sauce.js
 
-Playwright script that automates a full checkout run on [saucedemo.com](https://saucedemo.com), capturing screenshots (and matching HTML snapshots) at desktop and mobile viewport sizes, plus a deliberately broken UI state with a before/after comparison — organized into a clean/broken/after dataset for testing.
+Playwright script that automates a full checkout run on [saucedemo.com](https://saucedemo.com), capturing self-contained screenshot+HTML+asset bundles for every page at desktop and mobile viewport sizes, plus a deliberately broken UI state with a before/after/fix comparison and an automatic visual diff — organized into a clean/broken/after/diff dataset for testing.
 
 ## What it does, step by step
 
@@ -12,44 +12,62 @@ Playwright script that automates a full checkout run on [saucedemo.com](https://
 
 4. **Checkout flow** — clicks into the cart, hits Checkout, fills in the checkout info form with dummy data (first name, last name, zip), continues through to the order overview, and clicks Finish. Waits for the "Thank you for your order" confirmation page to confirm the run succeeded.
 
-5. **Screenshot + HTML snapshot, together** — every capture point saves both a `.png` and a matching `.html` with the same base name, so there's both a visual and the raw DOM to work from.
+5. **Screenshot + HTML + real assets, all together, per page** — every capture point gets its own folder named after the page, and everything (the `.png`, the `.html`, and the actual `.js`/`.css`/image files the page loaded) lands together in that folder's `assets/` subfolder — fully self-contained, nothing shared across pages:
+   ```
+   screenshots/clean/product-page/assets/
+   ├── product-page.png
+   ├── product-page.html
+   ├── index-XyuNVFOR.js
+   ├── index-Co7SA-g_.css
+   └── sauce-backpack-1200x1500-CjRW-Djj.jpg  (etc.)
+   ```
+   The real JS/CSS/image files are grabbed via a network response listener and cached in memory as they load, then replayed into every page's own `assets/` folder — since the bundle only loads once per navigation, not once per screenshot, a naive "save what just loaded" approach would miss it for every capture after the first.
 
-6. **Broken UI state (desktop, on purpose)** — after the main desktop run, injects some junk CSS via `page.addStyleTag()` that pushes the first "Add to cart" button 2200px wide off the right edge of the screen, then captures `broken-button-clip.png`. This never touches the real site — it's injected into that one page load only, so it's a clean, repeatable way to generate a "bad" screenshot + matching broken DOM for test data. Kept to just the overflow (no color/border styling) so it reads as a genuine layout bug rather than an obviously staged one.
+   Includes a `waitForLoadState('networkidle')` before the product page capture specifically, since the inventory list renders in the DOM before the product images finish loading — without that wait, screenshots were catching half-loaded images.
 
-7. **After-fix comparison** — re-runs the exact same page through `captureBrokenState` again, this time with the broken CSS skipped (`applyBrokenCss: false`), saving it as `broken-button-fixed.png` into a separate `after/` folder — so the "before" (broken/) and "after" (after/) screenshots of the same bug can be diffed side by side once a real fix goes in.
+6. **Broken UI state (desktop, on purpose)** — after the main desktop run, injects some junk CSS via `page.addStyleTag()` that pushes the first "Add to cart" button 2200px wide off the right edge of the screen, then captures `broken-button-clip`. This never touches the real site — it's injected into that one page load only, so it's a clean, repeatable way to generate a "bad" screenshot + matching broken DOM for test data.
 
-8. **Mobile pass (375x812, ~iPhone size)** — repeats the clean flow at a mobile viewport, capturing product, cart, and confirmation.
+7. **Manual reference + real fix, for comparison** — `captureBrokenState()` re-runs with the bug turned off manually (`broken-button-reference`, a placeholder baseline), and separately with the actual verified CSS fix from the ML side (`broken-button-fixed`) — both saved into `after/`.
 
-9. **Auto-closes when done** — waits 2 seconds after the mobile pass finishes, then closes the browser automatically instead of leaving the window sitting open.
+8. **Automatic visual diff** — right after the fix screenshot is captured, shells out to `visual_diff.py` to diff it against the original bug screenshot, highlighting exactly what changed. Saves `screenshots/diff/broken-button-diff.png`. Wrapped in a try/catch — if Python or Pillow isn't installed, it logs a warning and the rest of the run continues rather than crashing.
 
-## Output structure — clean/broken/after dataset
+9. **Mobile pass (375x812, ~iPhone size)** — repeats the clean flow at a mobile viewport, capturing product, cart, and confirmation the same self-contained way.
 
-Every run creates `screenshots/`, `screenshots/clean/`, `screenshots/broken/`, and `screenshots/after/` automatically if they don't already exist:
+10. **Auto-closes when done** — waits 2 seconds after the mobile pass finishes, then closes the browser automatically instead of leaving the window sitting open.
+
+## Output structure — clean/broken/after/diff dataset
 
 ```
 screenshots/
 ├── clean/
-│   ├── login-page.png / .html
-│   ├── product-page.png / .html
-│   ├── product-detail.png / .html
-│   ├── cart-multi-item.png / .html
-│   ├── confirmation-page.png / .html
-│   ├── mobile-product.png / .html
-│   ├── mobile-cart.png / .html
-│   └── mobile-confirmation.png / .html
+│   ├── login-page/assets/           (png, html, js, css, images)
+│   ├── product-page/assets/
+│   ├── product-detail/assets/
+│   ├── cart-multi-item/assets/
+│   ├── confirmation-page/assets/
+│   ├── mobile-product/assets/
+│   ├── mobile-cart/assets/
+│   └── mobile-confirmation/assets/
 ├── broken/
-│   └── broken-button-clip.png / .html      (the bug)
-└── after/
-    └── broken-button-fixed.png / .html     (same page, bug removed)
+│   └── broken-button-clip/assets/   (the bug)
+├── after/
+│   ├── broken-button-reference/assets/  (bug manually turned off - placeholder baseline)
+│   └── broken-button-fixed/assets/      (the actual ML-verified fix)
+└── diff/
+    └── broken-button-diff.png       (highlighted pixel diff: bug vs fix)
 ```
-
-Since every capture goes through the shared `captureSnapshot()` helper, every `.png` in every folder is guaranteed to have its matching `.html` right next to it.
 
 ## Structure
 
-**`captureSnapshot(page, screenshotsDir, filename)`** — every screenshot in the file goes through this instead of calling `page.screenshot()` directly. It takes the screenshot, then calls `page.content()` to grab the live rendered DOM and writes it out to a matching `.html` file.
+**`setupAssetCapture(page)`** — hooks a `page.on('response', ...)` listener that catches every network response whose URL contains `/assets/`, and caches the raw bytes in memory keyed by URL path. Called once on the page.
 
-**`runCheckoutFlow(page, screenshotsDir, viewport, filenames, options = {})`** — the whole login → detail page → cart → checkout → capture sequence, in one reusable function. Both the desktop and mobile passes write into `clean/`. `options`:
+**`saveAssetsFor(pageDir)`** — writes everything currently in that in-memory cache into `<pageDir>/assets/`. Called from inside `captureSnapshot()` every single time a screenshot is taken, so every page ends up with a full local copy of the bundle regardless of when it actually loaded.
+
+**`captureSnapshot(page, screenshotsDir, filename)`** — every screenshot in the file goes through this. Creates the per-page `assets/` folder, saves the `.png` and `.html` into it, then calls `saveAssetsFor()`.
+
+**`generateVisualDiff(beforePath, afterPath, outputPath)`** — shells out to `visual_diff.py` (must sit in the same folder as `open-sauce.js`) via `child_process.execFileSync`. Failure (missing Python/Pillow) is caught and logged, not fatal.
+
+**`runCheckoutFlow(page, screenshotsDir, viewport, filenames, options = {})`** — the whole login → detail page → cart → checkout → capture sequence. Both the desktop and mobile passes write into `clean/`. `options`:
 
 | option | default | what it does |
 |---|---|---|
@@ -58,9 +76,19 @@ Since every capture goes through the shared `captureSnapshot()` helper, every `.
 | `captureDetail` | `false` | click into the first product's detail page and capture it |
 | `stopAtCart` | `false` | stop after the cart capture instead of going through checkout |
 
-**`captureBrokenState(page, screenshotsDir, applyBrokenCss = true, filename = 'broken-button-clip.png')`** — separate function since this flow is genuinely different (no cart/checkout at all, just inject CSS and capture). Runs at the desktop viewport. `applyBrokenCss` toggles whether the broken CSS gets injected at all — `true` (default) for the actual bug, `false` to capture the same page with no bug, for the after-fix comparison. `filename` lets each call save under its own name so the two don't overwrite each other.
+**`captureBrokenState(page, screenshotsDir, options = {})`** — separate function since this flow is genuinely different (no cart/checkout at all, just inject CSS and capture). `applyBrokenCss` toggles the built-in bug on/off; `customCss` injects any CSS string instead (used for the real ML fix); `filename` lets each call save under its own name.
 
-**`rerunFlowForComparison(flowFn, ...args)`** — generic re-run helper. Takes whatever capture function you used the first time (`runCheckoutFlow` or `captureBrokenState`) plus a fresh set of args, and just calls it again. Used here to grab the "after" screenshot once a fix is simulated, but works for re-running any flow, not just this one.
+**`rerunFlowForComparison(flowFn, ...args)`** — generic re-run helper, takes whatever capture function you used the first time plus a fresh set of args and calls it again.
+
+## visual_diff.py
+
+Standalone Python script (Pillow) that compares two screenshots and produces a highlighted diff:
+```bash
+python visual_diff.py <before.png> <after.png> <output-diff.png>
+```
+Computes per-pixel difference via `ImageChops.difference()`, thresholds it into a changed/unchanged mask, paints changed pixels semi-transparent red over the `after` image, and draws a bounding box around the overall changed region. Prints the bounding box, pixel count, and percentage changed. Resizes `after` to match `before` automatically if their dimensions don't line up.
+
+**Must sit in the same folder as `open-sauce.js`** — `generateVisualDiff()` looks for it via `path.join(__dirname, 'visual_diff.py')`.
 
 ## Pacing / delays
 
@@ -69,9 +97,3 @@ A few small `waitForTimeout()` calls are sprinkled in purely so the browser run 
 - A ~1.5s pause on the order overview page before clicking Finish, so it doesn't flash by
 - A 2s pause before the browser auto-closes at the end
 
-
-
-
-
-
-- Still working on fetching the related CSS, JS and other assets of the captured screenshots to help the VLM give proper and correct output/fix..
