@@ -339,7 +339,6 @@ def validate_result(result):
             print("   ❌ Invalid severity_level (need Critical/Major/Minor)")
             return None
 
-        # --- bbox validation (NEW) ---
         bbox_status = validate_bbox(result.get("bbox"))
         if bbox_status is False:
             print("   ❌ Invalid bbox (must be x_min<x_max, y_min<y_max, all in 0.0-1.0)")
@@ -350,7 +349,6 @@ def validate_result(result):
         selector = fix.get("selector")
         changes = fix.get("css_changes")
 
-        # --- selector_confidence validation (NEW, separate from confidence_score) ---
         if "selector_confidence" not in fix:
             print("   ❌ fix.selector_confidence is required")
             return None
@@ -411,7 +409,7 @@ def validate_result(result):
 
 
 # -------------------------------------------------
-# NEW: Selector confidence gate (PR flagging)
+# Selector confidence gate (PR flagging)
 # -------------------------------------------------
 def check_selector_confidence(fix, threshold=SELECTOR_CONFIDENCE_THRESHOLD):
     """
@@ -434,7 +432,7 @@ def check_selector_confidence(fix, threshold=SELECTOR_CONFIDENCE_THRESHOLD):
 
 
 # -------------------------------------------------
-# NEW: Bug-severity heatmap overlay
+# Bug-severity heatmap overlay
 # -------------------------------------------------
 def draw_bug_heatmap(img_path, bbox, severity_level, output_path, crop_region=CROP_REGION):
     """
@@ -452,7 +450,6 @@ def draw_bug_heatmap(img_path, bbox, severity_level, output_path, crop_region=CR
         im = im.convert("RGBA")
         width, height = im.size
 
-        # Pixel extent of the crop region within the full image
         crop_left = crop_region["left"] * width
         crop_top = crop_region["top"] * height
         crop_right = crop_region["right"] * width
@@ -460,7 +457,6 @@ def draw_bug_heatmap(img_path, bbox, severity_level, output_path, crop_region=CR
         crop_w = crop_right - crop_left
         crop_h = crop_bottom - crop_top
 
-        # Map normalized bbox (crop-relative) -> absolute pixels on full image
         abs_x_min = crop_left + bbox["x_min"] * crop_w
         abs_y_min = crop_top + bbox["y_min"] * crop_h
         abs_x_max = crop_left + bbox["x_max"] * crop_w
@@ -522,7 +518,7 @@ def apply_css_fix(html_path, fix):
 
 
 # -------------------------------------------------
-# Screenshot HTML
+# Screenshot HTML — NOW VALIDATES THE PAGE ACTUALLY LOADED
 # -------------------------------------------------
 def screenshot_html(html_path, screenshot_path):
     html_path = Path(html_path).resolve()
@@ -546,7 +542,21 @@ def screenshot_html(html_path, screenshot_path):
             page.on("console", lambda msg: print(f"   CONSOLE: {msg.text}"))
             page.on("pageerror", lambda err: print(f"   PAGE ERROR: {err}"))
             page.on("requestfailed", lambda req: print(f"   REQUEST FAILED: {req.url} - {req.failure}"))
-            page.goto(f"http://localhost:{port}/{html_path.name}")
+
+            response = page.goto(f"http://localhost:{port}/{html_path.name}")
+
+            # Fail loudly instead of silently screenshotting an error page.
+            # This is what caught the bug where the heatmap was being drawn
+            # on a "404 File not found" page instead of the real UI.
+            if response is None or response.status != 200:
+                status = response.status if response else "no response"
+                browser.close()
+                raise RuntimeError(
+                    f"Page failed to load (HTTP {status}) — "
+                    f"refusing to screenshot an error page. "
+                    f"Check that {html_path.name} exists in {serve_dir}."
+                )
+
             page.wait_for_timeout(5000)
             page.screenshot(path=str(screenshot_path), full_page=False)
             browser.close()
@@ -858,7 +868,6 @@ if __name__ == "__main__":
             if final["bug_found"]:
                 print("\n🔴 BUG DETECTED")
 
-                # NEW: draw the severity heatmap overlay for this image
                 heatmap_name = Path(img).stem + "_heatmap.png"
                 draw_bug_heatmap(
                     img,
@@ -867,7 +876,6 @@ if __name__ == "__main__":
                     os.path.join(HEATMAP_OUTPUT_DIR, heatmap_name),
                 )
 
-                # NEW: selector confidence gate, independent of bug confidence
                 needs_review, reason = check_selector_confidence(final["fix"])
                 if needs_review:
                     print(f"   🚩 PR FLAG (selector confidence): {reason}")
@@ -904,10 +912,6 @@ if __name__ == "__main__":
         else:
             fix = detection["fix"]
 
-            # NEW: gate on selector confidence BEFORE even trying to apply.
-            # This is deliberately checked separately from bug confidence_score
-            # and separately from sanity_check_selector's syntactic checks -
-            # a selector can be syntactically fine and still be a low-confidence guess.
             needs_review, review_reason = check_selector_confidence(fix)
             if needs_review:
                 print(f"⚠️  Selector confidence too low to auto-apply: {review_reason}")
