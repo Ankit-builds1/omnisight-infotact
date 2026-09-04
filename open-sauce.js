@@ -1,6 +1,20 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
+
+// shells out to visual_diff.py (sits alongside this script) to compare a before/after pair and
+// save a highlighted diff image. keeping the actual pixel-diffing logic in python/pillow instead
+// of reimplementing it here - this just wires it into the run so it happens automatically______note: sid
+function generateVisualDiff(beforePath, afterPath, outputPath) {
+  try {
+    execFileSync('python3', [path.join(__dirname, 'visual_diff.py'), beforePath, afterPath, outputPath], {
+      stdio: 'inherit'
+    });
+  } catch (err) {
+    console.log('visual diff failed to run - is python3/Pillow installed? skipping, not a fatal error');
+  }
+}
 
 // keeps every asset (js/css/image/font under /assets/) we've seen so far in memory, keyed by
 // url pathname. most of these - especially the js/css bundle - only actually load ONCE per page
@@ -240,8 +254,9 @@ async function rerunFlowForComparison(flowFn, ...args) {
   const cleanDir = path.join(screenshotsDir, 'clean');
   const brokenDir = path.join(screenshotsDir, 'broken');
   const afterDir = path.join(screenshotsDir, 'after'); // for the fixed re-run, to diff against broken/
+  const diffDir = path.join(screenshotsDir, 'diff');   // highlighted before/after diff images land here
 
-  [screenshotsDir, cleanDir, brokenDir, afterDir].forEach(dir => {
+  [screenshotsDir, cleanDir, brokenDir, afterDir, diffDir].forEach(dir => {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir);
     }
@@ -288,6 +303,15 @@ async function rerunFlowForComparison(flowFn, ...args) {
     filename: 'broken-button-fixed.png'
   });
 
+  // now diff the actual bug against the actual fix and highlight what changed - both images
+  // ended up in their own nested folders from captureSnapshot, so build the exact paths here____note: sid
+  console.log('generating visual diff between the bug and the fix');
+  generateVisualDiff(
+    path.join(brokenDir, 'broken-button-clip', 'assets', 'broken-button-clip.png'),
+    path.join(afterDir, 'broken-button-fixed', 'assets', 'broken-button-fixed.png'),
+    path.join(diffDir, 'broken-button-diff.png')
+  );
+
   // mobile pass, roughly an iphone x/11 size, same flow just repeated at a smaller viewport
   console.log('switching to mobile viewport, redoing the flow for mobile screenshots');
   await runCheckoutFlow(page, cleanDir, { width: 375, height: 812 }, {
@@ -302,5 +326,4 @@ async function rerunFlowForComparison(flowFn, ...args) {
 })();
 
 
-//checked the screenshot dir_ and broken screenshot folder, everything looks fine , the screenshots are clear
-// ig ready for Mid-Review
+
