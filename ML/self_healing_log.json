@@ -1,0 +1,614 @@
+[
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The 'Add to cart' button for the Sauce Labs Fleece Jacket is clipped and not fully visible.",
+    "fix_applied": {
+      "selector": "button.add-to-cart",
+      "css_changes": [
+        {
+          "property": "max-width",
+          "value": "100px"
+        },
+        {
+          "property": "margin-right",
+          "value": "10px"
+        }
+      ],
+      "explanation": "Reducing the button's width and adding right margin to ensure it fits properly."
+    },
+    "status": "NOT_FIXED",
+    "evaluation": {
+      "bug_still_present": true,
+      "confidence_score": 0.95,
+      "explanation": "The 'Add to cart' button for the Sauce Labs Fleece Jacket is still clipped and not fully visible in the AFTER screenshot."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The 'Add to cart' button for the Sauce Labs Bike Light is clipped and cut off on the right side.",
+    "fix_applied": {
+      "selector": "button.add-to-cart",
+      "css_changes": [
+        {
+          "property": "max-width",
+          "value": "100px"
+        },
+        {
+          "property": "margin-right",
+          "value": "10px"
+        }
+      ],
+      "explanation": "Reducing the button's max-width and margin-right ensures it fits within the container without being clipped."
+    },
+    "status": "NOT_FIXED",
+    "evaluation": {
+      "bug_still_present": true,
+      "confidence_score": 0.9,
+      "explanation": "The 'Add to cart' button is still clipped and cut off on the right side in the AFTER screenshot, indicating that the original bug has not been fixed."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The 'Add to cart' button for the Sauce Labs Backpack is clipped and cut off on the right side.",
+    "fix_applied": {
+      "selector": "button.add-to-cart",
+      "css_changes": [
+        {
+          "property": "max-width",
+          "value": "auto"
+        }
+      ],
+      "explanation": "Relaxing the max-width property allows the button to return to its natural size and prevent clipping."
+    },
+    "status": "NOT_FIXED",
+    "evaluation": {
+      "bug_still_present": true,
+      "confidence_score": 0.9,
+      "explanation": "The 'Add to cart' button is still clipped and cut off on the right side in the AFTER screenshot."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The 'Add to cart' button for the Sauce Labs Bike Light is clipped and cut off on the right side.",
+    "fix_applied": {
+      "selector": "button.add-to-cart",
+      "css_changes": [
+        {
+          "property": "max-width",
+          "value": "none"
+        }
+      ],
+      "explanation": "Relaxing the max-width property allows the button to expand and fit within its container."
+    },
+    "status": "NOT_FIXED",
+    "evaluation": {
+      "bug_still_present": true,
+      "confidence_score": 0.9,
+      "explanation": "The 'Add to cart' button is still clipped and cut off on the right side in the AFTER screenshot, indicating that the original bug has not been fixed."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The 'Add to cart' button for the Sauce Labs Bike Light is clipped and cut off on the right side.",
+    "fix_applied": {
+      "selector": "button.add-to-cart",
+      "css_changes": [
+        {
+          "property": "max-width",
+          "value": "none"
+        }
+      ],
+      "explanation": "Relaxing the max-width constraint allows the button to expand and fit within its container."
+    },
+    "status": "NOT_FIXED",
+    "evaluation": {
+      "bug_still_present": true,
+      "confidence_score": 0.9,
+      "explanation": "The 'Add to cart' button is still clipped and cut off on the right side in the AFTER screenshot, indicating that the original bug has not been fixed."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The 'Add to cart' button for the Sauce Labs Bike Light is clipped and cut off.",
+    "fix_applied": {
+      "selector": "button.add-to-cart",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the button's width and max-width properties allows it to fully display."
+    },
+    "status": "NOT_FIXED",
+    "evaluation": {
+      "bug_still_present": true,
+      "confidence_score": 0.9,
+      "explanation": "The 'Add to cart' button is still clipped and cut off in the AFTER screenshot, indicating that the original bug has not been fixed."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The 'Add to cart' button for the Sauce Labs Bike Light is clipped and cut off.",
+    "fix_applied": {
+      "selector": "button.add-to-cart",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the button's width and max-width properties allows it to fully display."
+    },
+    "status": "NOT_FIXED",
+    "evaluation": {
+      "bug_still_present": true,
+      "confidence_score": 0.9,
+      "explanation": "The 'Add to cart' button is still clipped and cut off in the AFTER screenshot, indicating that the original bug has not been fixed."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The 'Add to cart' button for the Sauce Labs Bike Light is clipped and cut off.",
+    "fix_applied": {
+      "selector": "button.add-to-cart",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the button's width and max-width properties allows it to fully display."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button text 'Add to cart - Buy Now' is fully visible and readable, with no part of the text cut off or hidden. The button's border forms a full rectangle with no clipping by the edge of another box."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The 'Add to cart' button for the Sauce Labs Bike Light is clipped and cut off.",
+    "fix_applied": {
+      "selector": "button.add-to-cart",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the button's width and max-width properties allows it to fully display."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button text 'Add to cart - Buy Now' is fully visible and readable, with no part of the text cut off or hidden. The button's border forms a full rectangle with no clipping by the edge of another box."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The 'Add to cart' button for the Sauce Labs Bike Light is clipped and cut off.",
+    "fix_applied": {
+      "selector": "#page_wrapper .inventory_item:nth-child(2) .btn_inventory",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the button's width and max-width properties allows it to fully display."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button text and border are fully visible and readable without any parts cut off or hidden."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The 'Add to cart' button for the Sauce Labs Bike Light is clipped and cut off.",
+    "fix_applied": {
+      "selector": "#page_wrapper .inventory_item:nth-child(2) .btn_inventory",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the button's width and max-width properties allows it to fully display."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button text and border are fully visible and readable without any parts cut off or hidden."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The button with id 'react-burger-menu-btn' is stretched horizontally and clipped on the right side.",
+    "fix_applied": {
+      "selector": "#react-burger-menu-btn",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will allow the button to expand and display fully."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button text and border are fully visible and readable without any parts cut off or hidden."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The button with id 'react-burger-menu-btn' is stretched horizontally and clipped on the right side.",
+    "fix_applied": {
+      "selector": "#react-burger-menu-btn",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will allow the button to display fully without being clipped."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button's text is not visible, and the image appears to be missing the button's content. The button's border is fully visible, but the text is not readable."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The button with id 'react-burger-menu-btn' is stretched horizontally and clipped on the right side.",
+    "fix_applied": {
+      "selector": "#react-burger-menu-btn",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will allow the button to display fully without being clipped."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button's text is not visible, and the image appears to be missing the button's content. The button's border is fully visible, but the text is not readable."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The button with id 'react-burger-menu-btn' is stretched horizontally and clipped on the right side.",
+    "fix_applied": {
+      "selector": "#react-burger-menu-btn",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will allow the button to display fully without being clipped."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button's text is not visible, and the image appears to be missing the button's content. The button's border is fully visible, but the text is not readable."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The button borders are clipped and cut off, making it difficult to see the full button.",
+    "fix_applied": {
+      "selector": "#react-burger-menu-btn",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will allow the button to display fully."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button's text is not visible, and the image appears to be missing the button's content. The button's border is fully visible, but the text is not readable."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The button with id 'react-burger-menu-btn' is stretched horizontally and clipped on the right side.",
+    "fix_applied": {
+      "selector": "#react-burger-menu-btn",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will allow the button to display fully without being clipped."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button text and border are fully visible and readable without any parts cut off or hidden."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The button with id 'react-burger-menu-btn' is stretched horizontally and clipped on the right side.",
+    "fix_applied": {
+      "selector": "#react-burger-menu-btn",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will allow the button to display fully without being clipped."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button's text is not visible, and the image appears to be missing the button's content. The button's border is fully visible, but the text is not readable."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The button borders are clipped and not fully visible.",
+    "fix_applied": {
+      "selector": "#react-burger-menu-btn",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will ensure the button borders are fully visible."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button's text is not visible, and the image appears to be missing the button's content. The button's border is fully visible, but the text is not readable."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The button with the id 'react-burger-menu-btn' is stretched horizontally and clipped on the right side.",
+    "fix_applied": {
+      "selector": "#react-burger-menu-btn",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will allow the button to display fully without being clipped."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button text is not visible, indicating that the text is cut off or hidden. The border of the button appears to be clipped by the edge of another box, suggesting a layout or design issue."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The button with id 'react-burger-menu-btn' is stretched horizontally and clipped on the right side.",
+    "fix_applied": {
+      "selector": "#react-burger-menu-btn",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will allow the button to fully display without being clipped."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button's text and border are fully visible and readable without any parts cut off or hidden."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The button in the first product card is clipped and cut off.",
+    "fix_applied": {
+      "selector": "#page_wrapper .inventory_item:first-child .btn_inventory",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will allow the button to be fully visible."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button's text and border are fully visible and readable without any parts cut off or hidden."
+    }
+  },
+  {
+    "html_path": "screenshots/broken/broken-button-clip.html",
+    "original_bug": "The button in the first product card is clipped and cut off.",
+    "fix_applied": {
+      "selector": "#page_wrapper .inventory_item:first-child .btn_inventory",
+      "css_changes": [
+        {
+          "property": "width",
+          "value": "auto"
+        },
+        {
+          "property": "max-width",
+          "value": "none"
+        },
+        {
+          "property": "overflow",
+          "value": "visible"
+        }
+      ],
+      "explanation": "Relaxing the width and max-width properties and setting overflow to visible will allow the button to be fully visible."
+    },
+    "status": "FIXED",
+    "evaluation": {
+      "bug_still_present": false,
+      "confidence_score": 0.95,
+      "explanation": "The button's text and border are fully visible and readable without any parts cut off or hidden."
+    }
+  }
+]
