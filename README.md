@@ -41,7 +41,6 @@ enough to reach GitHub.
 6. 🚀 **GitHub PR** — confidence-gated, screenshots attached, auto-branched
 7. 🖥️ **React QA Dashboard** — human approves or rejects, one click
 
-
 ---
 
 ## 🧩 Architecture
@@ -59,7 +58,7 @@ that stitches them together into one pipeline.
 
 ## 👥 Team & Week 4 Progress
 
-### 🧠 ML — Vision & Self-Healing 
+### 🧠 ML — Vision & Self-Healing
 
 - ✅ Migrated from LLaVA 1.5 7B → **Qwen2.5-VL 7B** after LLaVA's fixed-resolution CLIP projector was found to compress viewport-overflow bugs into invisibility
 - ✅ Self-healing loop proven **consistent across 3 independent runs** on the real injected bug
